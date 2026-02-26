@@ -1,6 +1,7 @@
 // src/app/layout.tsx
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -56,6 +57,7 @@ export const metadata: Metadata = {
     description: siteDescription,
     images: [
       {
+        // If you add src/app/opengraph-image.tsx, Next will serve it at /opengraph-image
         url: "/opengraph-image",
         width: 1200,
         height: 630,
@@ -72,7 +74,9 @@ export const metadata: Metadata = {
   },
 
   icons: {
+    // If you add src/app/icon.png, Next will serve it at /icon
     icon: [{ url: "/icon", type: "image/png" }],
+    // If you add src/app/apple-icon.png, Next will serve it at /apple-icon
     apple: [{ url: "/apple-icon", type: "image/png" }],
   },
 
@@ -88,6 +92,7 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable}`}>
         {children}
+        <Analytics />
       </body>
     </html>
   );
