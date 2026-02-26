@@ -1,36 +1,179 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# FTPMonitor
 
-## Getting Started
+Instant server-side health checks for **FTP / FTPS / SFTP** endpoints.
 
-First, run the development server:
+Validate connectivity, authentication, and directory access in seconds
+--- with structured diagnostics and clear failure signals.
+
+---
+
+## Why This Exists
+
+FTP-based transfer systems are still widely used in:
+
+- Healthcare data exchange
+- Financial batch processing
+- Government integrations
+- Vendor file drops
+- Legacy B2B workflows
+
+When these systems fail, diagnosing the problem often requires:
+
+- Manual CLI testing
+- Local client configuration
+- Guesswork around DNS / firewall / credentials
+- Back-and-forth between teams
+
+FTPMonitor provides a fast, structured way to validate endpoints without
+requiring local client setup.
+
+---
+
+## What It Does
+
+For a given FTP / FTPS / SFTP endpoint, FTPMonitor performs:
+
+1.  **DNS Resolution**\
+    Confirms the hostname resolves.
+
+2.  **TCP Connectivity**\
+    Verifies the port is reachable.
+
+3.  **Authentication Attempt**\
+    Validates credentials (no persistence).
+
+4.  **Directory Validation**\
+    Confirms access to a specified remote path.
+
+Each step returns:
+
+- Pass / fail status
+- Response timing
+- Clear diagnostic messaging
+
+Designed for infrastructure troubleshooting --- not just basic uptime
+checks.
+
+---
+
+## Current Status
+
+MVP (Phase 1)
+
+- Instant health checks
+- Server-side execution (Node runtime)
+- Structured diagnostic output
+- Basic rate limiting
+- Early-access capture mechanism
+
+The architecture is structured to evolve into scheduled monitoring and
+alerting.
+
+---
+
+## Tech Stack
+
+- Next.js (App Router)
+- TypeScript
+- Node.js runtime (required for protocol libraries)
+- API-driven architecture
+
+All health-check logic runs server-side.
+
+---
+
+## Local Development
+
+### 1. Install dependencies
+
+```bash
+npm install
+```
+
+### 2. Create environment file
+
+```bash
+cp .env.example .env.local
+```
+
+### 3. Start dev server
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Visit:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+http://localhost:3000
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+---
 
-## Learn More
+## Environment Variables
 
-To learn more about Next.js, take a look at the following resources:
+Create a `.env.local` file.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Required
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```env
+GOOGLE_SHEETS_SPREADSHEET_ID=
+GOOGLE_SHEETS_SHEET_NAME=Sheet1
+GOOGLE_SERVICE_ACCOUNT_EMAIL=
+GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY=
+```
 
-## Deploy on Vercel
+### Optional
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```env
+RATE_LIMIT_PER_MINUTE=20
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+⚠️ Do not commit real credentials. Use `.env.example`.
+
+---
+
+## Security Notes
+
+- Credentials used for checks are not stored.
+- Sensitive data is excluded from logs.
+- All protocol operations run server-side.
+- Basic rate limiting is applied.
+
+Future versions will include encrypted credential storage for scheduled
+monitoring.
+
+---
+
+## Roadmap
+
+### Phase 1 --- Instant Diagnostics
+
+- FTP / FTPS / SFTP validation
+- Structured output
+- Manual checks
+
+### Phase 2 --- Continuous Monitoring
+
+- Saved endpoints
+- Scheduled checks
+- Uptime history
+
+### Phase 3 --- Alerts & Integrations
+
+- Email alerts
+- Webhooks
+- Team accounts
+
+---
+
+## Contributing
+
+Contributions, suggestions, and issue reports are welcome.
+
+If you've dealt with brittle FTP infrastructure before, feedback is
+especially appreciated.
+
+---
+
+## License
+
+TBD

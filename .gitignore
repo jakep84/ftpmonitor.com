@@ -1,41 +1,76 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+# =========================
+# Node / Next.js
+# =========================
+node_modules/
+.next/
+out/
+dist/
+build/
 
-# dependencies
-/node_modules
-/.pnp
-.pnp.*
-.yarn/*
-!.yarn/patches
-!.yarn/plugins
-!.yarn/releases
-!.yarn/versions
-
-# testing
-/coverage
-
-# next.js
-/.next/
-/out/
-
-# production
-/build
-
-# misc
-.DS_Store
-*.pem
-
-# debug
+# Logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-.pnpm-debug.log*
+pnpm-debug.log*
+*.log
 
-# env files (can opt-in for committing if needed)
-.env*
+# Local env files (NEVER COMMIT)
+.env
+.env.*
+!.env.example
 
-# vercel
-.vercel
+# OS / editor junk
+.DS_Store
+Thumbs.db
+desktop.ini
 
-# typescript
+# VS Code / JetBrains
+.vscode/
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+*.iml
+
+# TypeScript
 *.tsbuildinfo
-next-env.d.ts
+
+# Turbopack / cache
+.turbo/
+.cache/
+
+# Test / coverage
+coverage/
+.nyc_output/
+
+# =========================
+# Secrets / keys / certs
+# =========================
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+*.cer
+*.der
+*.jks
+
+# Google service account JSON (if you ever use a file-based key)
+*service-account*.json
+*google-credentials*.json
+credentials*.json
+
+# =========================
+# Local scripts / misc
+# =========================
+scripts/*.local.*
+*.local.*
+
+# =========================
+# If you use Docker later
+# =========================
+docker-compose.override.yml
+
+# =========================
+# Optional: Storybook, etc.
+# =========================
+storybook-static/
