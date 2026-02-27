@@ -1,7 +1,8 @@
+// src/app/api/waitlist/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { google } from "googleapis";
 import { z } from "zod";
 import { rateLimitOrThrow } from "@/lib/ratelimit";
+import { getSheetsClient } from "@/lib/sheets";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -12,32 +13,6 @@ const BodySchema = z.object({
   protocol: z.enum(["ftp", "ftps", "sftp"]).optional(),
   host: z.string().optional(),
 });
-
-function getSheetsClient() {
-  const spreadsheetId = process.env.GOOGLE_SHEETS_SPREADSHEET_ID;
-  const sheetName = process.env.GOOGLE_SHEETS_SHEET_NAME || "Sheet1";
-  const clientEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
-  const privateKeyRaw = process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY;
-
-  if (!spreadsheetId) throw new Error("Missing GOOGLE_SHEETS_SPREADSHEET_ID");
-  if (!clientEmail) throw new Error("Missing GOOGLE_SERVICE_ACCOUNT_EMAIL");
-  if (!privateKeyRaw)
-    throw new Error("Missing GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY");
-
-  const privateKey = privateKeyRaw.includes("\\n")
-    ? privateKeyRaw.replace(/\\n/g, "\n")
-    : privateKeyRaw;
-
-  const auth = new google.auth.JWT({
-    email: clientEmail,
-    key: privateKey,
-    scopes: ["https://www.googleapis.com/auth/spreadsheets"],
-  });
-
-  const sheets = google.sheets({ version: "v4", auth });
-
-  return { sheets, spreadsheetId, sheetName };
-}
 
 async function emailAlreadyExists(params: {
   sheets: any;
@@ -56,7 +31,6 @@ async function emailAlreadyExists(params: {
   const rows: string[][] = r.data.values ?? [];
   const needle = email.trim().toLowerCase();
 
-  // rows[0] is header "email"
   for (let i = 1; i < rows.length; i++) {
     const cell = (rows[i]?.[0] ?? "").trim().toLowerCase();
     if (cell && cell === needle) return true;

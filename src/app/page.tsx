@@ -1,3 +1,4 @@
+// src/app/page.tsx
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -31,10 +32,8 @@ function defaultPort(p: Protocol) {
 }
 
 function redact(input: any) {
-  // Deep-ish clone with redaction for safe clipboard/debug display
   try {
     const s = JSON.stringify(input, (_k, v) => v, 2);
-    // Extra safety: remove anything that looks like a private key block
     return s.replace(
       /-----BEGIN[\s\S]*?-----END[\s\S]*?-----/g,
       "[REDACTED_KEY]",
@@ -69,6 +68,15 @@ export default function HomePage() {
   );
   const [emailMsg, setEmailMsg] = useState<string>("");
 
+  // Fake "saved monitor" conversion test modal
+  const [saveOpen, setSaveOpen] = useState(false);
+  const [saveEmail, setSaveEmail] = useState("");
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saved" | "error">(
+    "idle",
+  );
+  const [saveMsg, setSaveMsg] = useState("");
+  const saveEmailRef = useRef<HTMLInputElement | null>(null);
+
   // Don’t override user custom port once they touched it
   const userTouchedPort = useRef(false);
 
@@ -76,7 +84,7 @@ export default function HomePage() {
   const waitlistRef = useRef<HTMLDivElement | null>(null);
   const emailInputRef = useRef<HTMLInputElement | null>(null);
 
-  // Health check UX refs (scroll + focus when user clicks hero button without filling form)
+  // Health check UX refs
   const healthFormRef = useRef<HTMLElement | null>(null);
   const hostInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -85,7 +93,6 @@ export default function HomePage() {
   }, [protocol]);
 
   useEffect(() => {
-    // After a successful check, guide the user to the waitlist
     if (result?.ok) {
       waitlistRef.current?.scrollIntoView({
         behavior: "smooth",
@@ -94,6 +101,14 @@ export default function HomePage() {
       setTimeout(() => emailInputRef.current?.focus(), 250);
     }
   }, [result?.ok]);
+
+  useEffect(() => {
+    if (saveOpen) {
+      setSaveStatus("idle");
+      setSaveMsg("");
+      setTimeout(() => saveEmailRef.current?.focus(), 50);
+    }
+  }, [saveOpen]);
 
   const styles = useMemo(() => {
     const bg = "#0b0b0c";
@@ -164,6 +179,25 @@ export default function HomePage() {
         color: muted,
         fontSize: 12,
       } as React.CSSProperties,
+      modalOverlay: {
+        position: "fixed",
+        inset: 0,
+        background: "rgba(0,0,0,0.65)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 16,
+        zIndex: 50,
+      } as React.CSSProperties,
+      modalCard: {
+        width: "100%",
+        maxWidth: 520,
+        borderRadius: 16,
+        border: `1px solid ${border}`,
+        background: "#0c0c0e",
+        color: text,
+        padding: 16,
+      } as React.CSSProperties,
     };
   }, []);
 
@@ -224,7 +258,6 @@ export default function HomePage() {
         details: s.details,
       })),
       tips: result.tips,
-      // Never include credentials from UI state:
       note: "Credentials are not included in this debug output.",
     };
     await navigator.clipboard.writeText(redact(safe));
@@ -290,6 +323,48 @@ export default function HomePage() {
     }
   }
 
+  async function submitSaveMonitor() {
+    setSaveStatus("idle");
+    setSaveMsg("");
+
+    if (!validateEmail(saveEmail)) {
+      setSaveStatus("error");
+      setSaveMsg("Please enter a valid email.");
+      return;
+    }
+
+    try {
+      const r = await fetch("/api/waitlist", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          email: saveEmail.trim(),
+          source: "save_monitor_modal",
+          protocol,
+          host: host.trim() || undefined,
+        }),
+      });
+
+      const json = await r.json();
+
+      if (!r.ok || !json?.ok) {
+        setSaveStatus("error");
+        setSaveMsg(json?.error ?? "Couldn’t save your email. Try again.");
+        return;
+      }
+
+      setSaveStatus("saved");
+      setSaveMsg(
+        json.added === false
+          ? "You’re already on the list. We’ll notify you at launch."
+          : "Saved. We’ll notify you when monitoring launches.",
+      );
+    } catch {
+      setSaveStatus("error");
+      setSaveMsg("Couldn’t save your email. Try again.");
+    }
+  }
+
   const traffic = result ? (result.ok ? "🟢" : "🔴") : "⚪️";
   const canRun =
     !!host.trim() &&
@@ -301,7 +376,6 @@ export default function HomePage() {
         : true);
 
   function handleHeroRun() {
-    // Instead of disabling the hero CTA, guide user to the form.
     if (!canRun) {
       healthFormRef.current?.scrollIntoView({
         behavior: "smooth",
@@ -313,683 +387,831 @@ export default function HomePage() {
     runCheck();
   }
 
-  // Responsive: switch to 1 column when narrow (simple approach)
   const isNarrow =
     typeof window !== "undefined"
       ? window.matchMedia?.("(max-width: 860px)")?.matches
       : false;
 
   return (
-    <main
-      style={{
-        minHeight: "100vh",
-        background: styles.bg,
-        color: styles.text,
-        padding: "32px 16px",
-        fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Arial",
-      }}
-    >
-      <div style={{ maxWidth: 980, margin: "0 auto" }}>
-        {/* HERO */}
-        <section
-          style={{
-            display: "grid",
-            gridTemplateColumns: isNarrow ? "1fr" : "1.2fr 0.8fr",
-            gap: 24,
-            alignItems: "start",
-          }}
-        >
-          <div>
-            <h1
-              style={{
-                fontSize: 44,
-                lineHeight: 1.05,
-                margin: 0,
-                letterSpacing: -0.6,
-              }}
-            >
-              Know Immediately When Your FTP Fails.
-            </h1>
-            <p style={{ fontSize: 18, marginTop: 12, color: styles.muted }}>
-              Test your FTP / FTPS / SFTP connection instantly — then turn it
-              into continuous monitoring in one click.
-            </p>
-
-            <div
-              style={{
-                display: "flex",
-                flexWrap: "wrap",
-                gap: 12,
-                marginTop: 16,
-              }}
-            >
-              <button
-                onClick={handleHeroRun}
-                disabled={loading}
-                style={styles.btnPrimary(loading)}
-                title={
-                  canRun
-                    ? "Run a health check"
-                    : "Add a host (and credentials if needed) to run the check"
-                }
-              >
-                {loading ? "Running…" : "Run Free Health Check"}
-              </button>
-
-              <button
-                onClick={clearForm}
-                disabled={loading}
-                style={styles.btnGhost(loading)}
-                title="Clear inputs + results"
-              >
-                Clear
-              </button>
-
-              <a
-                href="#how"
-                style={{
-                  alignSelf: "center",
-                  color: styles.text,
-                  opacity: 0.9,
-                  textDecoration: "none",
-                }}
-              >
-                See how monitoring works →
-              </a>
-            </div>
-
-            <div
-              style={{
-                display: "flex",
-                flexWrap: "wrap",
-                gap: 10,
-                marginTop: 14,
-              }}
-            >
-              <span style={styles.chip}>✓ No credentials stored (Phase 1)</span>
-              <span style={styles.chip}>✓ Under 60 seconds</span>
-              <span style={styles.chip}>✓ Clear diagnostics</span>
-            </div>
-          </div>
-
-          {/* MINI PREVIEW / STATUS */}
-          <div
+    <>
+      <main
+        style={{
+          minHeight: "100vh",
+          background: styles.bg,
+          color: styles.text,
+          padding: "32px 16px",
+          fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Arial",
+        }}
+      >
+        <div style={{ maxWidth: 980, margin: "0 auto" }}>
+          {/* HERO */}
+          <section
             style={{
-              border: `1px solid ${styles.border}`,
-              borderRadius: styles.radius,
-              padding: 16,
-              background: styles.panel,
-            }}
-          >
-            <div
-              style={{ fontSize: 12, color: styles.muted2, marginBottom: 8 }}
-            >
-              Example Result
-            </div>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-              }}
-            >
-              <div style={{ fontWeight: 800 }}>Health Check</div>
-              <div style={{ fontSize: 22 }}>{traffic}</div>
-            </div>
-            <div style={{ fontSize: 13, color: styles.muted, marginTop: 8 }}>
-              DNS → TCP → Auth → List
-            </div>
-            <div style={{ marginTop: 12, fontSize: 13, color: styles.muted }}>
-              Tip: Fiddler won’t show FTP traffic — this tool checks the
-              connection directly.
-            </div>
-          </div>
-        </section>
-
-        {/* PROBLEM */}
-        <section
-          style={{
-            marginTop: 34,
-            padding: 18,
-            borderRadius: styles.radius,
-            background: styles.panel2,
-            border: `1px solid ${styles.border}`,
-          }}
-        >
-          <h2 style={{ margin: 0, letterSpacing: -0.2 }}>
-            When FTP breaks, nobody knows… until it’s too late.
-          </h2>
-          <ul
-            style={{
-              marginTop: 10,
-              marginBottom: 0,
-              lineHeight: 1.75,
-              color: styles.muted,
-            }}
-          >
-            <li>Nightly exports silently fail</li>
-            <li>Vendor files never arrive</li>
-            <li>Automations stop running</li>
-            <li>Clients complain before you’re aware</li>
-          </ul>
-        </section>
-
-        {/* HEALTH CHECK FORM */}
-        <section
-          ref={healthFormRef}
-          style={{
-            marginTop: 28,
-            border: `1px solid ${styles.border}`,
-            borderRadius: styles.radius,
-            padding: 18,
-            background: styles.panel,
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              gap: 12,
-              flexWrap: "wrap",
+              display: "grid",
+              gridTemplateColumns: isNarrow ? "1fr" : "1.2fr 0.8fr",
+              gap: 24,
+              alignItems: "start",
             }}
           >
             <div>
-              <h2 style={{ marginTop: 0, marginBottom: 6 }}>
-                Test Your FTP / SFTP Now
-              </h2>
-              <div style={{ color: styles.muted, fontSize: 13 }}>
-                DNS → TCP → Auth → List • Clear answers in seconds
+              <h1
+                style={{
+                  fontSize: 44,
+                  lineHeight: 1.05,
+                  margin: 0,
+                  letterSpacing: -0.6,
+                }}
+              >
+                Know Immediately When Your FTP Fails.
+              </h1>
+              <p style={{ fontSize: 18, marginTop: 12, color: styles.muted }}>
+                Test your FTP / FTPS / SFTP connection instantly — then turn it
+                into continuous monitoring in one click.
+              </p>
+
+              <div
+                style={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: 12,
+                  marginTop: 16,
+                }}
+              >
+                <button
+                  onClick={handleHeroRun}
+                  disabled={loading}
+                  style={styles.btnPrimary(loading)}
+                  title={
+                    canRun
+                      ? "Run a health check"
+                      : "Add a host (and credentials if needed) to run the check"
+                  }
+                >
+                  {loading ? "Running…" : "Run Free Health Check"}
+                </button>
+
+                <button
+                  onClick={clearForm}
+                  disabled={loading}
+                  style={styles.btnGhost(loading)}
+                  title="Clear inputs + results"
+                >
+                  Clear
+                </button>
+
+                <a
+                  href="#how"
+                  style={{
+                    alignSelf: "center",
+                    color: styles.text,
+                    opacity: 0.9,
+                    textDecoration: "none",
+                  }}
+                >
+                  See how monitoring works →
+                </a>
+              </div>
+
+              <div
+                style={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: 10,
+                  marginTop: 14,
+                }}
+              >
+                <span style={styles.chip}>
+                  ✓ No credentials stored (Phase 1)
+                </span>
+                <span style={styles.chip}>✓ Under 60 seconds</span>
+                <span style={styles.chip}>✓ Clear diagnostics</span>
               </div>
             </div>
-          </div>
 
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: isNarrow ? "1fr" : "1fr 1fr 1fr",
-              gap: 12,
-              marginTop: 14,
-            }}
-          >
-            <label>
-              <div style={styles.label}>Protocol</div>
-              <select
-                value={protocol}
-                onChange={(e) => {
-                  setProtocol(e.target.value as Protocol);
-                  // Reset auth mode defaults when switching protocols
-                  if ((e.target.value as Protocol) !== "sftp")
-                    setSftpAuthMode("password");
-                }}
-                style={styles.input}
-              >
-                <option value="sftp">SFTP</option>
-                <option value="ftp">FTP</option>
-                <option value="ftps">FTPS</option>
-              </select>
-            </label>
-
-            <label>
-              <div style={styles.label}>Host</div>
-              <input
-                ref={hostInputRef}
-                value={host}
-                onChange={(e) => setHost(e.target.value)}
-                placeholder="example.com"
-                style={styles.input}
-              />
-            </label>
-
-            <label>
-              <div style={styles.label}>Port</div>
-              <input
-                value={port}
-                onChange={(e) => {
-                  userTouchedPort.current = true;
-                  setPort(Number(e.target.value));
-                }}
-                type="number"
-                style={styles.input}
-              />
-            </label>
-
-            <label>
-              <div style={styles.label}>Username</div>
-              <input
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="user"
-                style={styles.input}
-              />
-            </label>
-
-            {/* Auth fields */}
-            {protocol === "sftp" ? (
-              <>
-                <div style={{ gridColumn: isNarrow ? "auto" : "span 2" }}>
-                  <div style={styles.label}>Authentication</div>
-                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                    <button
-                      type="button"
-                      onClick={() => setSftpAuthMode("password")}
-                      style={{
-                        ...styles.btnGhost(false),
-                        border:
-                          sftpAuthMode === "password"
-                            ? "1px solid #fff"
-                            : `1px solid ${styles.border}`,
-                      }}
-                    >
-                      Password
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setSftpAuthMode("key")}
-                      style={{
-                        ...styles.btnGhost(false),
-                        border:
-                          sftpAuthMode === "key"
-                            ? "1px solid #fff"
-                            : `1px solid ${styles.border}`,
-                      }}
-                    >
-                      Private Key
-                    </button>
-                  </div>
-
-                  {sftpAuthMode === "password" ? (
-                    <div style={{ marginTop: 10 }}>
-                      <div style={styles.label}>Password</div>
-                      <div
-                        style={{
-                          display: "flex",
-                          gap: 10,
-                          alignItems: "center",
-                          flexWrap: "wrap",
-                        }}
-                      >
-                        <input
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
-                          type={showPassword ? "text" : "password"}
-                          style={{ ...styles.input, flex: 1 }}
-                        />
-                        <label
-                          style={{
-                            display: "flex",
-                            gap: 8,
-                            alignItems: "center",
-                            color: styles.muted,
-                            fontSize: 13,
-                          }}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={showPassword}
-                            onChange={(e) => setShowPassword(e.target.checked)}
-                          />
-                          Show
-                        </label>
-                      </div>
-                    </div>
-                  ) : (
-                    <div style={{ marginTop: 10 }}>
-                      <div style={styles.label}>Private Key PEM</div>
-                      <textarea
-                        value={privateKey}
-                        onChange={(e) => setPrivateKey(e.target.value)}
-                        rows={6}
-                        placeholder="-----BEGIN OPENSSH PRIVATE KEY-----"
-                        style={{
-                          ...styles.input,
-                          fontFamily:
-                            "ui-monospace, SFMono-Regular, Menlo, monospace",
-                        }}
-                      />
-                      <div
-                        style={{
-                          marginTop: 6,
-                          fontSize: 12,
-                          color: styles.muted2,
-                        }}
-                      >
-                        Tip: Paste your key. We don’t store it (Phase 1).
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                <label>
-                  <div style={styles.label}>Path (optional)</div>
-                  <input
-                    value={path}
-                    onChange={(e) => setPath(e.target.value)}
-                    placeholder="e.g. .  or  /incoming"
-                    style={styles.input}
-                  />
-                  <div
-                    style={{ marginTop: 6, fontSize: 12, color: styles.muted2 }}
-                  >
-                    Examples: <code style={{ color: styles.muted }}>.</code> or{" "}
-                    <code style={{ color: styles.muted }}>/incoming</code>
-                  </div>
-                </label>
-              </>
-            ) : (
-              <>
-                <label>
-                  <div style={styles.label}>Password</div>
-                  <div
-                    style={{
-                      display: "flex",
-                      gap: 10,
-                      alignItems: "center",
-                      flexWrap: "wrap",
-                    }}
-                  >
-                    <input
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      type={showPassword ? "text" : "password"}
-                      style={{ ...styles.input, flex: 1 }}
-                    />
-                    <label
-                      style={{
-                        display: "flex",
-                        gap: 8,
-                        alignItems: "center",
-                        color: styles.muted,
-                        fontSize: 13,
-                      }}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={showPassword}
-                        onChange={(e) => setShowPassword(e.target.checked)}
-                      />
-                      Show
-                    </label>
-                  </div>
-                </label>
-
-                <label>
-                  <div style={styles.label}>Path (optional)</div>
-                  <input
-                    value={path}
-                    onChange={(e) => setPath(e.target.value)}
-                    placeholder="e.g. /  or  /incoming"
-                    style={styles.input}
-                  />
-                  <div
-                    style={{ marginTop: 6, fontSize: 12, color: styles.muted2 }}
-                  >
-                    Examples: <code style={{ color: styles.muted }}>/</code> or{" "}
-                    <code style={{ color: styles.muted }}>/incoming</code>
-                  </div>
-                </label>
-              </>
-            )}
-          </div>
-
-          <div
-            style={{
-              display: "flex",
-              gap: 12,
-              alignItems: "center",
-              marginTop: 16,
-              flexWrap: "wrap",
-            }}
-          >
-            <button
-              onClick={runCheck}
-              disabled={loading || !canRun}
-              style={styles.btnPrimary(loading || !canRun)}
+            {/* MINI PREVIEW / STATUS */}
+            <div
+              style={{
+                border: `1px solid ${styles.border}`,
+                borderRadius: styles.radius,
+                padding: 16,
+                background: styles.panel,
+              }}
             >
-              {loading ? "Running…" : "Run Health Check"}
-            </button>
-
-            <div style={{ fontSize: 13, color: styles.muted }}>
-              We do not store credentials during testing.
-            </div>
-          </div>
-
-          {error && (
-            <div style={{ marginTop: 12, color: styles.danger }}>{error}</div>
-          )}
-
-          {/* RESULTS */}
-          {result && (
-            <div style={{ marginTop: 18 }}>
+              <div
+                style={{ fontSize: 12, color: styles.muted2, marginBottom: 8 }}
+              >
+                Example Result
+              </div>
               <div
                 style={{
                   display: "flex",
                   justifyContent: "space-between",
-                  gap: 12,
                   alignItems: "center",
-                  flexWrap: "wrap",
                 }}
               >
-                <h3 style={{ marginBottom: 8, marginTop: 0 }}>
-                  {result.ok ? "✅ Success" : "❌ Failed"}{" "}
-                  <span style={{ fontSize: 13, color: styles.muted }}>
-                    ({result.totalMs} ms)
-                  </span>
-                </h3>
-
-                <button
-                  onClick={copyDebug}
-                  style={styles.btnGhost(false)}
-                  title="Copy safe debug output (no credentials)"
-                >
-                  Copy Debug Output
-                </button>
+                <div style={{ fontWeight: 800 }}>Health Check</div>
+                <div style={{ fontSize: 22 }}>{traffic}</div>
               </div>
+              <div style={{ fontSize: 13, color: styles.muted, marginTop: 8 }}>
+                DNS → TCP → Auth → List
+              </div>
+              <div style={{ marginTop: 12, fontSize: 13, color: styles.muted }}>
+                Tip: Fiddler won’t show FTP traffic — this tool checks the
+                connection directly.
+              </div>
+            </div>
+          </section>
 
-              <div
-                style={{
-                  border: `1px solid ${styles.border}`,
-                  borderRadius: 12,
-                  padding: 12,
-                  background: "#0c0c0e",
-                }}
-              >
-                {result.steps.map((s, idx) => (
-                  <div
-                    key={s.key}
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      gap: 12,
-                      padding: "10px 0",
-                      borderBottom:
-                        idx === result.steps.length - 1
-                          ? "none"
-                          : `1px solid ${styles.border}`,
-                    }}
-                  >
-                    <div>
-                      <div style={{ fontWeight: 800 }}>
-                        {s.ok ? "🟢" : "🔴"} {s.key.toUpperCase()}
-                      </div>
-                      <div style={{ fontSize: 13, color: styles.muted }}>
-                        {s.message}
-                      </div>
+          {/* PROBLEM */}
+          <section
+            style={{
+              marginTop: 34,
+              padding: 18,
+              borderRadius: styles.radius,
+              background: styles.panel2,
+              border: `1px solid ${styles.border}`,
+            }}
+          >
+            <h2 style={{ margin: 0, letterSpacing: -0.2 }}>
+              When FTP breaks, nobody knows… until it’s too late.
+            </h2>
+            <ul
+              style={{
+                marginTop: 10,
+                marginBottom: 0,
+                lineHeight: 1.75,
+                color: styles.muted,
+              }}
+            >
+              <li>Nightly exports silently fail</li>
+              <li>Vendor files never arrive</li>
+              <li>Automations stop running</li>
+              <li>Clients complain before you’re aware</li>
+            </ul>
+          </section>
 
-                      {s.details && (
+          {/* HEALTH CHECK FORM */}
+          <section
+            ref={healthFormRef}
+            style={{
+              marginTop: 28,
+              border: `1px solid ${styles.border}`,
+              borderRadius: styles.radius,
+              padding: 18,
+              background: styles.panel,
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                gap: 12,
+                flexWrap: "wrap",
+              }}
+            >
+              <div>
+                <h2 style={{ marginTop: 0, marginBottom: 6 }}>
+                  Test Your FTP / SFTP Now
+                </h2>
+                <div style={{ color: styles.muted, fontSize: 13 }}>
+                  DNS → TCP → Auth → List • Clear answers in seconds
+                </div>
+              </div>
+            </div>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: isNarrow ? "1fr" : "1fr 1fr 1fr",
+                gap: 12,
+                marginTop: 14,
+              }}
+            >
+              <label>
+                <div style={styles.label}>Protocol</div>
+                <select
+                  value={protocol}
+                  onChange={(e) => {
+                    setProtocol(e.target.value as Protocol);
+                    if ((e.target.value as Protocol) !== "sftp")
+                      setSftpAuthMode("password");
+                  }}
+                  style={styles.input}
+                >
+                  <option value="sftp">SFTP</option>
+                  <option value="ftp">FTP</option>
+                  <option value="ftps">FTPS</option>
+                </select>
+              </label>
+
+              <label>
+                <div style={styles.label}>Host</div>
+                <input
+                  ref={hostInputRef}
+                  value={host}
+                  onChange={(e) => setHost(e.target.value)}
+                  placeholder="example.com"
+                  style={styles.input}
+                />
+              </label>
+
+              <label>
+                <div style={styles.label}>Port</div>
+                <input
+                  value={port}
+                  onChange={(e) => {
+                    userTouchedPort.current = true;
+                    setPort(Number(e.target.value));
+                  }}
+                  type="number"
+                  style={styles.input}
+                />
+              </label>
+
+              <label>
+                <div style={styles.label}>Username</div>
+                <input
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="user"
+                  style={styles.input}
+                />
+              </label>
+
+              {/* Auth fields */}
+              {protocol === "sftp" ? (
+                <>
+                  <div style={{ gridColumn: isNarrow ? "auto" : "span 2" }}>
+                    <div style={styles.label}>Authentication</div>
+                    <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                      <button
+                        type="button"
+                        onClick={() => setSftpAuthMode("password")}
+                        style={{
+                          ...styles.btnGhost(false),
+                          border:
+                            sftpAuthMode === "password"
+                              ? "1px solid #fff"
+                              : `1px solid ${styles.border}`,
+                        }}
+                      >
+                        Password
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSftpAuthMode("key")}
+                        style={{
+                          ...styles.btnGhost(false),
+                          border:
+                            sftpAuthMode === "key"
+                              ? "1px solid #fff"
+                              : `1px solid ${styles.border}`,
+                        }}
+                      >
+                        Private Key
+                      </button>
+                    </div>
+
+                    {sftpAuthMode === "password" ? (
+                      <div style={{ marginTop: 10 }}>
+                        <div style={styles.label}>Password</div>
+                        <div
+                          style={{
+                            display: "flex",
+                            gap: 10,
+                            alignItems: "center",
+                            flexWrap: "wrap",
+                          }}
+                        >
+                          <input
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            type={showPassword ? "text" : "password"}
+                            style={{ ...styles.input, flex: 1 }}
+                          />
+                          <label
+                            style={{
+                              display: "flex",
+                              gap: 8,
+                              alignItems: "center",
+                              color: styles.muted,
+                              fontSize: 13,
+                            }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={showPassword}
+                              onChange={(e) =>
+                                setShowPassword(e.target.checked)
+                              }
+                            />
+                            Show
+                          </label>
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ marginTop: 10 }}>
+                        <div style={styles.label}>Private Key PEM</div>
+                        <textarea
+                          value={privateKey}
+                          onChange={(e) => setPrivateKey(e.target.value)}
+                          rows={6}
+                          placeholder="-----BEGIN OPENSSH PRIVATE KEY-----"
+                          style={{
+                            ...styles.input,
+                            fontFamily:
+                              "ui-monospace, SFMono-Regular, Menlo, monospace",
+                          }}
+                        />
                         <div
                           style={{
                             marginTop: 6,
                             fontSize: 12,
                             color: styles.muted2,
-                            fontFamily:
-                              "ui-monospace, SFMono-Regular, Menlo, monospace",
                           }}
                         >
-                          {redact(s.details)}
+                          Tip: Paste your key. We don’t store it (Phase 1).
                         </div>
-                      )}
-                    </div>
+                      </div>
+                    )}
+                  </div>
 
+                  <label>
+                    <div style={styles.label}>Path (optional)</div>
+                    <input
+                      value={path}
+                      onChange={(e) => setPath(e.target.value)}
+                      placeholder="e.g. .  or  /incoming"
+                      style={styles.input}
+                    />
                     <div
                       style={{
-                        fontSize: 13,
-                        color: styles.muted,
-                        whiteSpace: "nowrap",
+                        marginTop: 6,
+                        fontSize: 12,
+                        color: styles.muted2,
                       }}
                     >
-                      {typeof s.ms === "number" ? `${s.ms} ms` : ""}
+                      Examples: <code style={{ color: styles.muted }}>.</code>{" "}
+                      or <code style={{ color: styles.muted }}>/incoming</code>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  </label>
+                </>
+              ) : (
+                <>
+                  <label>
+                    <div style={styles.label}>Password</div>
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: 10,
+                        alignItems: "center",
+                        flexWrap: "wrap",
+                      }}
+                    >
+                      <input
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        type={showPassword ? "text" : "password"}
+                        style={{ ...styles.input, flex: 1 }}
+                      />
+                      <label
+                        style={{
+                          display: "flex",
+                          gap: 8,
+                          alignItems: "center",
+                          color: styles.muted,
+                          fontSize: 13,
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={showPassword}
+                          onChange={(e) => setShowPassword(e.target.checked)}
+                        />
+                        Show
+                      </label>
+                    </div>
+                  </label>
 
-              {result.tips?.length ? (
-                <div style={{ marginTop: 12 }}>
-                  <div style={{ fontWeight: 800 }}>Troubleshooting tips</div>
-                  <ul
-                    style={{
-                      marginTop: 8,
-                      lineHeight: 1.7,
-                      color: styles.muted,
-                    }}
-                  >
-                    {result.tips.map((t, i) => (
-                      <li key={i}>{t}</li>
-                    ))}
-                  </ul>
-                </div>
-              ) : null}
+                  <label>
+                    <div style={styles.label}>Path (optional)</div>
+                    <input
+                      value={path}
+                      onChange={(e) => setPath(e.target.value)}
+                      placeholder="e.g. /  or  /incoming"
+                      style={styles.input}
+                    />
+                    <div
+                      style={{
+                        marginTop: 6,
+                        fontSize: 12,
+                        color: styles.muted2,
+                      }}
+                    >
+                      Examples: <code style={{ color: styles.muted }}>/</code>{" "}
+                      or <code style={{ color: styles.muted }}>/incoming</code>
+                    </div>
+                  </label>
+                </>
+              )}
+            </div>
 
-              {/* Phase 2 waitlist CTA */}
-              <div
-                ref={waitlistRef}
-                style={{
-                  marginTop: 14,
-                  padding: 14,
-                  borderRadius: 12,
-                  border: `1px solid ${styles.border}`,
-                  background: styles.panel2,
-                }}
+            <div
+              style={{
+                display: "flex",
+                gap: 12,
+                alignItems: "center",
+                marginTop: 16,
+                flexWrap: "wrap",
+              }}
+            >
+              <button
+                onClick={runCheck}
+                disabled={loading || !canRun}
+                style={styles.btnPrimary(loading || !canRun)}
               >
-                <div style={{ fontWeight: 900, letterSpacing: -0.2 }}>
-                  Get early access to continuous monitoring
-                </div>
+                {loading ? "Running…" : "Run Health Check"}
+              </button>
+
+              <div style={{ fontSize: 13, color: styles.muted }}>
+                We do not store credentials during testing.
+              </div>
+            </div>
+
+            {error && (
+              <div style={{ marginTop: 12, color: styles.danger }}>{error}</div>
+            )}
+
+            {/* RESULTS */}
+            {result && (
+              <div style={{ marginTop: 18 }}>
                 <div
-                  style={{ fontSize: 13, color: styles.muted, marginTop: 6 }}
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    gap: 12,
+                    alignItems: "center",
+                    flexWrap: "wrap",
+                  }}
                 >
-                  Save monitors, run scheduled checks, and get alerts when
-                  something breaks. No spam — 1–2 emails max until launch.
+                  <h3 style={{ marginBottom: 8, marginTop: 0 }}>
+                    {result.ok ? "✅ Success" : "❌ Failed"}{" "}
+                    <span style={{ fontSize: 13, color: styles.muted }}>
+                      ({result.totalMs} ms)
+                    </span>
+                  </h3>
+
+                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                    <button
+                      onClick={copyDebug}
+                      style={styles.btnGhost(false)}
+                      title="Copy safe debug output (no credentials)"
+                    >
+                      Copy Debug Output
+                    </button>
+
+                    {result.ok && (
+                      <button
+                        onClick={() => {
+                          setSaveEmail(email || "");
+                          setSaveOpen(true);
+                        }}
+                        style={styles.btnPrimary(false)}
+                        title="Conversion test: save this endpoint for monitoring"
+                      >
+                        Save This Monitor
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 <div
                   style={{
-                    display: "flex",
-                    gap: 10,
-                    marginTop: 10,
-                    flexWrap: "wrap",
+                    border: `1px solid ${styles.border}`,
+                    borderRadius: 12,
+                    padding: 12,
+                    background: "#0c0c0e",
                   }}
                 >
-                  <input
-                    ref={emailInputRef}
-                    value={email}
-                    onChange={(e) => {
-                      setEmail(e.target.value);
-                      setEmailStatus("idle");
-                      setEmailMsg("");
-                    }}
-                    placeholder="you@company.com"
-                    style={{ ...styles.input, flex: 1, minWidth: 220 }}
-                  />
-                  <button
-                    onClick={joinWaitlist}
-                    style={styles.btnPrimary(false)}
-                  >
-                    Notify me
-                  </button>
+                  {result.steps.map((s, idx) => (
+                    <div
+                      key={s.key}
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        gap: 12,
+                        padding: "10px 0",
+                        borderBottom:
+                          idx === result.steps.length - 1
+                            ? "none"
+                            : `1px solid ${styles.border}`,
+                      }}
+                    >
+                      <div>
+                        <div style={{ fontWeight: 800 }}>
+                          {s.ok ? "🟢" : "🔴"} {s.key.toUpperCase()}
+                        </div>
+                        <div style={{ fontSize: 13, color: styles.muted }}>
+                          {s.message}
+                        </div>
+
+                        {s.details && (
+                          <div
+                            style={{
+                              marginTop: 6,
+                              fontSize: 12,
+                              color: styles.muted2,
+                              fontFamily:
+                                "ui-monospace, SFMono-Regular, Menlo, monospace",
+                            }}
+                          >
+                            {redact(s.details)}
+                          </div>
+                        )}
+                      </div>
+
+                      <div
+                        style={{
+                          fontSize: 13,
+                          color: styles.muted,
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {typeof s.ms === "number" ? `${s.ms} ms` : ""}
+                      </div>
+                    </div>
+                  ))}
                 </div>
 
-                {emailMsg ? (
-                  <div
-                    style={{
-                      marginTop: 8,
-                      fontSize: 13,
-                      color:
-                        emailStatus === "error" ? styles.danger : styles.ok,
-                    }}
-                  >
-                    {emailMsg}
+                {result.tips?.length ? (
+                  <div style={{ marginTop: 12 }}>
+                    <div style={{ fontWeight: 800 }}>Troubleshooting tips</div>
+                    <ul
+                      style={{
+                        marginTop: 8,
+                        lineHeight: 1.7,
+                        color: styles.muted,
+                      }}
+                    >
+                      {result.tips.map((t, i) => (
+                        <li key={i}>{t}</li>
+                      ))}
+                    </ul>
                   </div>
                 ) : null}
+
+                {/* Phase 2 waitlist CTA */}
+                <div
+                  ref={waitlistRef}
+                  style={{
+                    marginTop: 14,
+                    padding: 14,
+                    borderRadius: 12,
+                    border: `1px solid ${styles.border}`,
+                    background: styles.panel2,
+                  }}
+                >
+                  <div style={{ fontWeight: 900, letterSpacing: -0.2 }}>
+                    Get early access to continuous monitoring
+                  </div>
+                  <div
+                    style={{ fontSize: 13, color: styles.muted, marginTop: 6 }}
+                  >
+                    Save monitors, run scheduled checks, and get alerts when
+                    something breaks. No spam — 1–2 emails max until launch.
+                  </div>
+
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: 10,
+                      marginTop: 10,
+                      flexWrap: "wrap",
+                    }}
+                  >
+                    <input
+                      ref={emailInputRef}
+                      value={email}
+                      onChange={(e) => {
+                        setEmail(e.target.value);
+                        setEmailStatus("idle");
+                        setEmailMsg("");
+                      }}
+                      placeholder="you@company.com"
+                      style={{ ...styles.input, flex: 1, minWidth: 220 }}
+                    />
+                    <button
+                      onClick={joinWaitlist}
+                      style={styles.btnPrimary(false)}
+                    >
+                      Notify me
+                    </button>
+                  </div>
+
+                  {emailMsg ? (
+                    <div
+                      style={{
+                        marginTop: 8,
+                        fontSize: 13,
+                        color:
+                          emailStatus === "error" ? styles.danger : styles.ok,
+                      }}
+                    >
+                      {emailMsg}
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            )}
+          </section>
+
+          {/* HOW IT WORKS */}
+          <section id="how" style={{ marginTop: 32 }}>
+            <h2 style={{ marginBottom: 10 }}>How it works</h2>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: isNarrow ? "1fr" : "repeat(3, 1fr)",
+                gap: 12,
+              }}
+            >
+              <div
+                style={{
+                  border: `1px solid ${styles.border}`,
+                  borderRadius: styles.radius,
+                  padding: 14,
+                  background: styles.panel,
+                }}
+              >
+                <div style={{ fontWeight: 900 }}>1) Test</div>
+                <div
+                  style={{ marginTop: 6, fontSize: 14, color: styles.muted }}
+                >
+                  Run a health check (DNS → TCP → Auth → List).
+                </div>
+              </div>
+              <div
+                style={{
+                  border: `1px solid ${styles.border}`,
+                  borderRadius: styles.radius,
+                  padding: 14,
+                  background: styles.panel,
+                }}
+              >
+                <div style={{ fontWeight: 900 }}>2) Monitor</div>
+                <div
+                  style={{ marginTop: 6, fontSize: 14, color: styles.muted }}
+                >
+                  Save it and run scheduled checks (Phase 2).
+                </div>
+              </div>
+              <div
+                style={{
+                  border: `1px solid ${styles.border}`,
+                  borderRadius: styles.radius,
+                  padding: 14,
+                  background: styles.panel,
+                }}
+              >
+                <div style={{ fontWeight: 900 }}>3) Alert</div>
+                <div
+                  style={{ marginTop: 6, fontSize: 14, color: styles.muted }}
+                >
+                  Get notified when something breaks (Phase 3).
+                </div>
               </div>
             </div>
-          )}
-        </section>
+          </section>
 
-        {/* HOW IT WORKS */}
-        <section id="how" style={{ marginTop: 32 }}>
-          <h2 style={{ marginBottom: 10 }}>How it works</h2>
-          <div
+          <footer
             style={{
-              display: "grid",
-              gridTemplateColumns: isNarrow ? "1fr" : "repeat(3, 1fr)",
-              gap: 12,
+              marginTop: 42,
+              paddingTop: 18,
+              borderTop: `1px solid ${styles.border}`,
+              fontSize: 13,
+              color: styles.muted2,
             }}
           >
-            <div
-              style={{
-                border: `1px solid ${styles.border}`,
-                borderRadius: styles.radius,
-                padding: 14,
-                background: styles.panel,
-              }}
-            >
-              <div style={{ fontWeight: 900 }}>1) Test</div>
-              <div style={{ marginTop: 6, fontSize: 14, color: styles.muted }}>
-                Run a health check (DNS → TCP → Auth → List).
-              </div>
-            </div>
-            <div
-              style={{
-                border: `1px solid ${styles.border}`,
-                borderRadius: styles.radius,
-                padding: 14,
-                background: styles.panel,
-              }}
-            >
-              <div style={{ fontWeight: 900 }}>2) Monitor</div>
-              <div style={{ marginTop: 6, fontSize: 14, color: styles.muted }}>
-                Save it and run scheduled checks (Phase 2).
-              </div>
-            </div>
-            <div
-              style={{
-                border: `1px solid ${styles.border}`,
-                borderRadius: styles.radius,
-                padding: 14,
-                background: styles.panel,
-              }}
-            >
-              <div style={{ fontWeight: 900 }}>3) Alert</div>
-              <div style={{ marginTop: 6, fontSize: 14, color: styles.muted }}>
-                Get notified when something breaks (Phase 3).
-              </div>
-            </div>
-          </div>
-        </section>
+            © {new Date().getFullYear()} FTPMonitor.com — Simple FTP & SFTP
+            monitoring.
+          </footer>
+        </div>
+      </main>
 
-        <footer
-          style={{
-            marginTop: 42,
-            paddingTop: 18,
-            borderTop: `1px solid ${styles.border}`,
-            fontSize: 13,
-            color: styles.muted2,
+      {/* Save Monitor Modal */}
+      {saveOpen && (
+        <div
+          style={styles.modalOverlay}
+          role="dialog"
+          aria-modal="true"
+          onClick={(e) => {
+            // click outside closes
+            if (e.target === e.currentTarget) setSaveOpen(false);
           }}
         >
-          © {new Date().getFullYear()} FTPMonitor.com — Simple FTP & SFTP
-          monitoring.
-        </footer>
-      </div>
-    </main>
+          <div style={styles.modalCard}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                gap: 12,
+              }}
+            >
+              <div>
+                <div
+                  style={{ fontWeight: 900, fontSize: 18, letterSpacing: -0.2 }}
+                >
+                  Activate monitoring for this endpoint
+                </div>
+                <div
+                  style={{ marginTop: 6, color: styles.muted, fontSize: 13 }}
+                >
+                  Monitoring launches soon — enter your email to activate this
+                  endpoint.
+                </div>
+              </div>
+
+              <button
+                onClick={() => setSaveOpen(false)}
+                style={styles.btnGhost(false)}
+                aria-label="Close"
+              >
+                Close
+              </button>
+            </div>
+
+            <div
+              style={{
+                marginTop: 12,
+                border: `1px solid ${styles.border}`,
+                borderRadius: 12,
+                padding: 12,
+                background: "rgba(255,255,255,0.02)",
+                fontSize: 13,
+                color: styles.muted,
+              }}
+            >
+              <div>
+                <strong style={{ color: styles.text }}>Protocol:</strong>{" "}
+                {protocol.toUpperCase()}
+              </div>
+              <div style={{ marginTop: 4 }}>
+                <strong style={{ color: styles.text }}>Host:</strong>{" "}
+                {host.trim() || "(not set)"}
+              </div>
+            </div>
+
+            <div style={{ marginTop: 12 }}>
+              <div style={styles.label}>Email</div>
+              <input
+                ref={saveEmailRef}
+                value={saveEmail}
+                onChange={(e) => {
+                  setSaveEmail(e.target.value);
+                  setSaveStatus("idle");
+                  setSaveMsg("");
+                }}
+                placeholder="you@company.com"
+                style={styles.input}
+              />
+            </div>
+
+            <div
+              style={{
+                display: "flex",
+                gap: 10,
+                marginTop: 12,
+                flexWrap: "wrap",
+              }}
+            >
+              <button
+                onClick={submitSaveMonitor}
+                style={styles.btnPrimary(false)}
+              >
+                Activate Monitoring
+              </button>
+              <button
+                onClick={() => setSaveOpen(false)}
+                style={styles.btnGhost(false)}
+              >
+                Not now
+              </button>
+            </div>
+
+            {saveMsg ? (
+              <div
+                style={{
+                  marginTop: 10,
+                  fontSize: 13,
+                  color: saveStatus === "error" ? styles.danger : styles.ok,
+                }}
+              >
+                {saveMsg}
+              </div>
+            ) : null}
+          </div>
+        </div>
+      )}
+    </>
   );
 }

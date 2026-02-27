@@ -1,9 +1,11 @@
+// src/app/api/health-check/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { runFtpHealthCheck } from "@/lib/health/ftp";
 import { runSftpHealthCheck } from "@/lib/health/sftp";
 import { mapErrorToStep } from "@/lib/health/errors";
 import { rateLimitOrThrow } from "@/lib/ratelimit";
+import { logHealthCheckEvent } from "@/lib/metrics";
 
 export const runtime = "nodejs"; // required for FTP/SFTP libs
 export const dynamic = "force-dynamic";
@@ -16,9 +18,9 @@ const BodySchema = z.object({
   password: z.string().optional(),
   path: z.string().optional(),
   // FTPS only:
-  secure: z.boolean().optional(), // true for implicit/explicit depending on library usage
+  secure: z.boolean().optional(),
   // SFTP only:
-  privateKey: z.string().optional(), // PEM text (Phase 1: we’ll skip file upload; allow paste)
+  privateKey: z.string().optional(),
   passphrase: z.string().optional(),
 });
 
@@ -48,11 +50,17 @@ function defaultPort(protocol: "ftp" | "ftps" | "sftp") {
 }
 
 export async function POST(req: NextRequest) {
+  let parsedProtocol: "ftp" | "ftps" | "sftp" | null = null;
+  let parsedHost: string | null = null;
+
   try {
     await rateLimitOrThrow(req);
 
     const json = await req.json();
     const body = BodySchema.parse(json);
+
+    parsedProtocol = body.protocol;
+    parsedHost = body.host;
 
     const protocol = body.protocol;
     const port = body.port ?? defaultPort(protocol);
@@ -84,9 +92,27 @@ export async function POST(req: NextRequest) {
 
     result.totalMs = Date.now() - start;
 
+    // Metrics (non-blocking)
+    void logHealthCheckEvent({
+      req,
+      protocol,
+      host: body.host,
+      ok: result.ok,
+    });
+
     return NextResponse.json(result);
   } catch (err: any) {
     const mapped = mapErrorToStep(err);
+
+    // Metrics even on failures (best effort)
+    if (parsedProtocol && parsedHost) {
+      void logHealthCheckEvent({
+        req,
+        protocol: parsedProtocol,
+        host: parsedHost,
+        ok: false,
+      });
+    }
 
     const payload: Result = {
       ok: false,
