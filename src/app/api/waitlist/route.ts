@@ -88,7 +88,16 @@ export async function POST(req: NextRequest) {
       sheetNameUsed: sheetName,
     });
   } catch (err: any) {
-    console.error("WAITLIST_ERROR:", err?.message ?? err);
+    console.error("WAITLIST_ERROR:", {
+      msg: err?.message ?? String(err),
+      vercelEnv: process.env.VERCEL_ENV,
+      hasSpreadsheetId: !!process.env.GOOGLE_SHEETS_SPREADSHEET_ID,
+      hasSheetName: !!process.env.GOOGLE_SHEETS_SHEET_NAME,
+      hasClientEmail: !!process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+      hasPrivateKey: !!process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY,
+      hasServiceAccountJson: !!process.env.GOOGLE_SERVICE_ACCOUNT_JSON,
+    });
+
     return NextResponse.json(
       { ok: false, error: err?.message ?? "Failed to save email" },
       { status: 500 },
