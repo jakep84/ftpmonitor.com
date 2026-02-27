@@ -92,7 +92,15 @@ export async function POST(req: NextRequest) {
 
     result.totalMs = Date.now() - start;
 
-    // Metrics (non-blocking)
+    // ✅ Simple metric log (no credentials)
+    console.log("HC_METRIC", {
+      protocol,
+      host: body.host,
+      ok: result.ok,
+      ts: new Date().toISOString(),
+    });
+
+    // Metrics sink (non-blocking)
     void logHealthCheckEvent({
       req,
       protocol,
@@ -104,13 +112,29 @@ export async function POST(req: NextRequest) {
   } catch (err: any) {
     const mapped = mapErrorToStep(err);
 
-    // Metrics even on failures (best effort)
+    // ✅ Metrics/log even on failures (best effort)
     if (parsedProtocol && parsedHost) {
+      console.log("HC_METRIC", {
+        protocol: parsedProtocol,
+        host: parsedHost,
+        ok: false,
+        ts: new Date().toISOString(),
+      });
+
       void logHealthCheckEvent({
         req,
         protocol: parsedProtocol,
         host: parsedHost,
         ok: false,
+      });
+    } else {
+      // If we can't parse protocol/host (rate limit, bad JSON, etc.), still emit a breadcrumb
+      console.log("HC_METRIC", {
+        protocol: "unknown",
+        host: "unknown",
+        ok: false,
+        ts: new Date().toISOString(),
+        note: "Failed before body parse (rate limit / invalid JSON / validation error).",
       });
     }
 
