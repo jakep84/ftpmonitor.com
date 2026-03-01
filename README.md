@@ -2,57 +2,78 @@
 
 Instant server-side health checks for **FTP / FTPS / SFTP** endpoints.
 
-Validate connectivity, authentication, and directory access in seconds
---- with structured diagnostics and clear failure signals.
+Validate connectivity, authentication, and directory access in seconds — with structured diagnostics and contextual troubleshooting links.
 
 ---
 
 ## Why This Exists
 
-FTP-based transfer systems are still widely used in:
+FTP-based systems are still heavily used in:
 
 - Healthcare data exchange
 - Financial batch processing
 - Government integrations
 - Vendor file drops
-- Legacy B2B workflows
+- Legacy B2B pipelines
 
-When these systems fail, diagnosing the problem often requires:
+When they fail, teams often rely on:
 
 - Manual CLI testing
-- Local client configuration
-- Guesswork around DNS / firewall / credentials
-- Back-and-forth between teams
+- Local FTP client setup
+- Firewall guesswork
+- Vendor back-and-forth
 
-FTPMonitor provides a fast, structured way to validate endpoints without
-requiring local client setup.
+FTPMonitor gives immediate, structured answers without requiring local configuration.
 
 ---
 
 ## What It Does
 
-For a given FTP / FTPS / SFTP endpoint, FTPMonitor performs:
+For any FTP / FTPS / SFTP endpoint, FTPMonitor performs:
 
-1.  **DNS Resolution**\
-    Confirms the hostname resolves.
+1. **DNS Resolution**  
+   Confirms the hostname resolves.
 
-2.  **TCP Connectivity**\
-    Verifies the port is reachable.
+2. **TCP Connectivity**  
+   Verifies the port is reachable.
 
-3.  **Authentication Attempt**\
-    Validates credentials (no persistence).
+3. **Authentication Attempt**  
+   Validates credentials (not stored).
 
-4.  **Directory Validation**\
-    Confirms access to a specified remote path.
+4. **Directory Listing**  
+   Confirms access to a specified path.
 
 Each step returns:
 
 - Pass / fail status
-- Response timing
-- Clear diagnostic messaging
+- Execution time (ms)
+- Clear diagnostic message
+- Context-aware troubleshooting link
 
-Designed for infrastructure troubleshooting --- not just basic uptime
-checks.
+---
+
+## Built-In Troubleshooting Library
+
+Every failure step links to a structured guide or error page.
+
+Examples:
+
+- /guides/dns-resolution-failed
+- /guides/tcp-connection-timeout-firewall
+- /guides/authentication-failed
+- /errors/530-login-incorrect
+- /errors/econnrefused-port-22
+
+Guides are powered by structured content in:
+
+src/content/docs.ts
+
+Dynamic routes:
+
+/guides/[slug]  
+/errors/[slug]
+
+Related articles are auto-generated based on protocol + failure step.
 
 ---
 
@@ -60,14 +81,17 @@ checks.
 
 MVP (Phase 1)
 
-- Instant health checks
+- Instant manual health checks
 - Server-side execution (Node runtime)
-- Structured diagnostic output
+- Structured output
+- Context-aware help links
 - Basic rate limiting
-- Early-access capture mechanism
+- Google Sheets metrics + waitlist capture
 
-The architecture is structured to evolve into scheduled monitoring and
-alerting.
+Planned:
+
+Phase 2 — Continuous Monitoring  
+Phase 3 — Alerts & Integrations
 
 ---
 
@@ -75,10 +99,12 @@ alerting.
 
 - Next.js (App Router)
 - TypeScript
-- Node.js runtime (required for protocol libraries)
-- API-driven architecture
-
-All health-check logic runs server-side.
+- Node.js runtime (required for FTP/SFTP libraries)
+- basic-ftp
+- ssh2-sftp-client
+- Google Sheets (metrics + waitlist)
+- Zod validation
+- Structured JSON-LD for SEO
 
 ---
 
@@ -86,91 +112,146 @@ All health-check logic runs server-side.
 
 ### 1. Install dependencies
 
-```bash
 npm install
-```
 
 ### 2. Create environment file
 
-```bash
 cp .env.example .env.local
-```
 
-### 3. Start dev server
+### 3. Add required environment variables
 
-```bash
+GOOGLE_SHEETS_SPREADSHEET_ID=
+GOOGLE_SHEETS_SHEET_NAME=Sheet1
+GOOGLE_SERVICE_ACCOUNT_EMAIL=
+GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY=
+
+Optional:
+
+GOOGLE_SHEETS_METRICS_SHEET_NAME=Events
+RATE_LIMIT_PER_MINUTE=20
+
+⚠ Never commit real credentials.
+
+### 4. Start dev server
+
 npm run dev
-```
 
-Visit:
+Open:
 
 http://localhost:3000
 
 ---
 
-## Environment Variables
+## Testing Locally
 
-Create a `.env.local` file.
+You can run the included FTP test server:
 
-### Required
+node Scripts/ftp-test-server.mjs
 
-```env
-GOOGLE_SHEETS_SPREADSHEET_ID=
-GOOGLE_SHEETS_SHEET_NAME=Sheet1
-GOOGLE_SERVICE_ACCOUNT_EMAIL=
-GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY=
-```
+Credentials:
 
-### Optional
-
-```env
-RATE_LIMIT_PER_MINUTE=20
-```
-
-⚠️ Do not commit real credentials. Use `.env.example`.
+username: test  
+password: test  
+port: 2121
 
 ---
 
-## Security Notes
+## Project Structure
 
-- Credentials used for checks are not stored.
-- Sensitive data is excluded from logs.
-- All protocol operations run server-side.
-- Basic rate limiting is applied.
+src/  
+ app/  
+ api/  
+ health-check/  
+ waitlist/  
+ guides/  
+ errors/  
+ (docs)/  
+ content/  
+ docs.ts  
+ lib/  
+ health/  
+ docs/  
+ metrics.ts  
+ ratelimit.ts  
+ sheets.ts
 
-Future versions will include encrypted credential storage for scheduled
-monitoring.
+Health checks are implemented in:
+
+src/lib/health/ftp.ts  
+src/lib/health/sftp.ts
+
+Help links are resolved via:
+
+src/lib/docs/resolveHelpLink.ts
+
+---
+
+## Security Model
+
+- Credentials are not persisted
+- Keys are not logged
+- Private keys are redacted from debug output
+- Sensitive fields excluded from metrics
+- Basic per-IP rate limiting
+- Server-side only execution
+
+---
+
+## Metrics
+
+Every health check logs a safe event to Google Sheets:
+
+- Timestamp
+- Protocol
+- Host (sanitized)
+- Success / failure
+- Source IP
+
+Metrics logging is non-blocking and cannot break user requests.
+
+---
+
+## SEO & Structured Data
+
+Each guide and error page includes:
+
+- Canonical URLs
+- OpenGraph + Twitter metadata
+- Article schema
+- Optional FAQ schema
+
+All content is statically generated via generateStaticParams.
 
 ---
 
 ## Roadmap
 
-### Phase 1 --- Instant Diagnostics
+### Phase 1 — Diagnostics (Current)
 
-- FTP / FTPS / SFTP validation
-- Structured output
 - Manual checks
+- Structured guides
+- Metrics capture
 
-### Phase 2 --- Continuous Monitoring
+### Phase 2 — Monitoring
 
 - Saved endpoints
 - Scheduled checks
-- Uptime history
+- Uptime tracking
 
-### Phase 3 --- Alerts & Integrations
+### Phase 3 — Alerts
 
 - Email alerts
 - Webhooks
 - Team accounts
+- Integrations
 
 ---
 
 ## Contributing
 
-Contributions, suggestions, and issue reports are welcome.
+Contributions welcome.
 
-If you've dealt with brittle FTP infrastructure before, feedback is
-especially appreciated.
+If you've worked with brittle FTP infrastructure before, your feedback is especially valuable.
 
 ---
 
