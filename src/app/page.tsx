@@ -2,6 +2,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
+import { resolveHelpLink } from "@/lib/docs/resolveHelpLink";
 
 type Protocol = "ftp" | "ftps" | "sftp";
 
@@ -914,6 +916,31 @@ export default function HomePage() {
                         <div style={{ fontSize: 13, color: styles.muted }}>
                           {s.message}
                         </div>
+
+                        {/* NEW: context-aware help link */}
+                        {!s.ok &&
+                          (() => {
+                            const help = resolveHelpLink({
+                              protocol: result.protocol,
+                              step: s.key,
+                              message: s.message,
+                            });
+
+                            return help ? (
+                              <div style={{ marginTop: 6, fontSize: 13 }}>
+                                <Link
+                                  href={help}
+                                  style={{
+                                    color: styles.text,
+                                    textDecoration: "underline",
+                                    opacity: 0.9,
+                                  }}
+                                >
+                                  Read the troubleshooting guide →
+                                </Link>
+                              </div>
+                            ) : null;
+                          })()}
 
                         {s.details && (
                           <div
