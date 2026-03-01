@@ -1,4 +1,4 @@
-# FTPMonitor (Developer README)
+# FTPMonitor
 
 Server-side health checks for **FTP / FTPS / SFTP** endpoints.
 
