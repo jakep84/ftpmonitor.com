@@ -15,21 +15,40 @@ export function resolveHelpLink(params: {
 
   // TCP
   if (params.step === "tcp") {
+    // Connection refused
     if (msg.includes("econnrefused") || msg.includes("connection refused")) {
       return protocol === "sftp"
         ? "/errors/econnrefused-port-22"
         : "/errors/econnrefused-port-21";
     }
-    if (msg.includes("timeout"))
+
+    // Timeouts / drops
+    if (msg.includes("timeout") || msg.includes("timed out")) {
       return "/guides/tcp-connection-timeout-firewall";
+    }
+
+    // Default TCP catch-all
     return "/guides/tcp-connection-failed";
   }
 
   // AUTH
   if (params.step === "auth") {
+    // FTP 530
     if (msg.includes("530")) return "/errors/530-login-incorrect";
-    if (msg.includes("permission") || msg.includes("denied"))
-      return "/guides/permission-denied";
+
+    // SSH/SFTP typical auth phrasing
+    if (msg.includes("authentication failed"))
+      return "/guides/authentication-failed";
+
+    // "Permission denied" can happen during SSH auth too — route to existing doc
+    if (
+      msg.includes("permission denied") ||
+      msg.includes("permission") ||
+      msg.includes("denied")
+    ) {
+      return "/guides/authentication-failed";
+    }
+
     return "/guides/authentication-failed";
   }
 
