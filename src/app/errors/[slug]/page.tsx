@@ -53,7 +53,6 @@ function jsonLd(doc: any) {
       }
     : null;
 
-  // 👇 KEY FIX: make this an any[] so we can mix Article + FAQPage
   const graph: any[] = [
     {
       "@type": "Article",
