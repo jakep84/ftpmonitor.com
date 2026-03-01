@@ -1,138 +1,81 @@
 # FTPMonitor
 
-Instant server-side health checks for **FTP / FTPS / SFTP** endpoints.
+Server-side health checks for **FTP / FTPS / SFTP** endpoints.
 
-Validate connectivity, authentication, and directory access in seconds — with structured diagnostics and contextual troubleshooting links.
+Performs structured diagnostics across:
 
----
+DNS → TCP → Auth → Directory List
 
-## Why This Exists
-
-FTP-based systems are still heavily used in:
-
-- Healthcare data exchange
-- Financial batch processing
-- Government integrations
-- Vendor file drops
-- Legacy B2B pipelines
-
-When they fail, teams often rely on:
-
-- Manual CLI testing
-- Local FTP client setup
-- Firewall guesswork
-- Vendor back-and-forth
-
-FTPMonitor gives immediate, structured answers without requiring local configuration.
+Returns step-level status, timing, and contextual troubleshooting links.
 
 ---
 
-## What It Does
+## Overview
 
-For any FTP / FTPS / SFTP endpoint, FTPMonitor performs:
+FTPMonitor is a Next.js (App Router) application that executes real protocol-level checks using Node runtime libraries:
 
-1. **DNS Resolution**  
-   Confirms the hostname resolves.
+- basic-ftp (FTP / FTPS)
+- ssh2-sftp-client (SFTP)
 
-2. **TCP Connectivity**  
-   Verifies the port is reachable.
-
-3. **Authentication Attempt**  
-   Validates credentials (not stored).
-
-4. **Directory Listing**  
-   Confirms access to a specified path.
-
-Each step returns:
-
-- Pass / fail status
-- Execution time (ms)
-- Clear diagnostic message
-- Context-aware troubleshooting link
+All checks run server-side. Credentials are never persisted.
 
 ---
 
-## Built-In Troubleshooting Library
+## Features
 
-Every failure step links to a structured guide or error page.
-
-Examples:
-
-- /guides/dns-resolution-failed
-- /guides/tcp-connection-timeout-firewall
-- /guides/authentication-failed
-- /errors/530-login-incorrect
-- /errors/econnrefused-port-22
-
-Guides are powered by structured content in:
-
-src/content/docs.ts
-
-Dynamic routes:
-
-/guides/[slug]  
-/errors/[slug]
-
-Related articles are auto-generated based on protocol + failure step.
+- DNS resolution validation
+- TCP connectivity probe
+- Authentication verification
+- Directory listing test
+- Step-by-step structured output
+- Context-aware troubleshooting links
+- Built-in documentation system
+- Basic per-IP rate limiting
+- Optional Google Sheets metrics logging
+- Waitlist capture endpoint
 
 ---
 
-## Current Status
+## Runtime Requirements
 
-MVP (Phase 1)
+Node runtime required for protocol libraries.
 
-- Instant manual health checks
-- Server-side execution (Node runtime)
-- Structured output
-- Context-aware help links
-- Basic rate limiting
-- Google Sheets metrics + waitlist capture
+In API routes:
 
-Planned:
+export const runtime = "nodejs";
 
-Phase 2 — Continuous Monitoring  
-Phase 3 — Alerts & Integrations
+Edge runtime is not supported for health checks.
 
 ---
 
-## Tech Stack
-
-- Next.js (App Router)
-- TypeScript
-- Node.js runtime (required for FTP/SFTP libraries)
-- basic-ftp
-- ssh2-sftp-client
-- Google Sheets (metrics + waitlist)
-- Zod validation
-- Structured JSON-LD for SEO
-
----
-
-## Local Development
-
-### 1. Install dependencies
+## Installation
 
 npm install
 
-### 2. Create environment file
+---
 
-cp .env.example .env.local
+## Environment Configuration
 
-### 3. Add required environment variables
+Create `.env.local`.
+
+### Required
 
 GOOGLE_SHEETS_SPREADSHEET_ID=
 GOOGLE_SHEETS_SHEET_NAME=Sheet1
 GOOGLE_SERVICE_ACCOUNT_EMAIL=
 GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY=
 
-Optional:
+### Optional
 
 GOOGLE_SHEETS_METRICS_SHEET_NAME=Events
 RATE_LIMIT_PER_MINUTE=20
 
-⚠ Never commit real credentials.
+Private keys must contain the full PEM block.
+\n literals are automatically normalized.
 
-### 4. Start dev server
+---
+
+## Local Development
 
 npm run dev
 
@@ -142,45 +85,137 @@ http://localhost:3000
 
 ---
 
-## Testing Locally
+## Testing with Local FTP Server
 
-You can run the included FTP test server:
+Included test server:
 
 node Scripts/ftp-test-server.mjs
 
 Credentials:
 
-username: test  
-password: test  
-port: 2121
+Protocol: FTP
+Host: 127.0.0.1
+Port: 2121
+Username: test
+Password: test
+
+---
+
+## API Endpoints
+
+### Health Check
+
+POST /api/health-check
+
+Body:
+
+{
+"protocol": "ftp | ftps | sftp",
+"host": "example.com",
+"port": 21,
+"username": "user",
+"password": "pass",
+"path": "/incoming"
+}
+
+For SFTP key authentication:
+
+{
+"protocol": "sftp",
+"host": "example.com",
+"port": 22,
+"username": "user",
+"privateKey": "-----BEGIN OPENSSH PRIVATE KEY-----"
+}
+
+Response shape:
+
+{
+ok: boolean,
+protocol: string,
+host: string,
+port: number,
+totalMs: number,
+steps: [
+{
+key: "dns" | "tcp" | "auth" | "list",
+ok: boolean,
+ms?: number,
+message: string
+}
+],
+tips: string[]
+}
 
 ---
 
 ## Project Structure
 
-src/  
- app/  
- api/  
- health-check/  
- waitlist/  
- guides/  
- errors/  
- (docs)/  
- content/  
- docs.ts  
- lib/  
- health/  
- docs/  
- metrics.ts  
- ratelimit.ts  
- sheets.ts
+src/
+app/
+api/
+health-check/
+waitlist/
+guides/
+errors/
+(docs)/
+content/
+docs.ts
+lib/
+health/
+ftp.ts
+sftp.ts
+docs/
+resolveDoc.ts
+resolveHelpLink.ts
+metrics.ts
+ratelimit.ts
+sheets.ts
 
-Health checks are implemented in:
+---
 
-src/lib/health/ftp.ts  
+## Health Check Implementation
+
+### FTP / FTPS
+
+src/lib/health/ftp.ts
+
+Flow:
+
+1. dns.lookup
+2. Raw TCP socket probe
+3. basic-ftp authentication
+4. client.list()
+
+### SFTP
+
 src/lib/health/sftp.ts
 
-Help links are resolved via:
+Flow:
+
+1. dns.lookup
+2. Raw TCP socket probe
+3. ssh2-sftp-client.connect
+4. sftp.list()
+
+Supports password and private key authentication.
+
+---
+
+## Documentation System
+
+All guides and error pages are driven by:
+
+src/content/docs.ts
+
+Routes:
+
+/guides/[slug]
+/errors/[slug]
+
+Static generation via generateStaticParams().
+
+Context-aware linking:
 
 src/lib/docs/resolveHelpLink.ts
 
@@ -188,70 +223,56 @@ src/lib/docs/resolveHelpLink.ts
 
 ## Security Model
 
-- Credentials are not persisted
-- Keys are not logged
-- Private keys are redacted from debug output
-- Sensitive fields excluded from metrics
-- Basic per-IP rate limiting
+- Credentials never stored
+- Private keys redacted in debug output
+- Metrics logging excludes credentials
+- Basic per-IP in-memory rate limiting
 - Server-side only execution
 
 ---
 
-## Metrics
+## Metrics Logging
 
-Every health check logs a safe event to Google Sheets:
+src/lib/metrics.ts
+
+Logs:
 
 - Timestamp
 - Protocol
-- Host (sanitized)
+- Sanitized host
 - Success / failure
 - Source IP
 
-Metrics logging is non-blocking and cannot break user requests.
+Metrics failures do not block health checks.
 
 ---
 
-## SEO & Structured Data
+## Extending the System
 
-Each guide and error page includes:
+### Add a New Guide
 
-- Canonical URLs
-- OpenGraph + Twitter metadata
-- Article schema
-- Optional FAQ schema
+1. Add entry to DOCS in src/content/docs.ts
+2. Set type, slug, protocol, and step
+3. Optionally define relatedSlugs
 
-All content is statically generated via generateStaticParams.
+Route auto-generates.
+
+### Add New Failure Mapping
+
+Modify:
+
+src/lib/docs/resolveHelpLink.ts
+
+Map step + message pattern to slug.
 
 ---
 
 ## Roadmap
 
-### Phase 1 — Diagnostics (Current)
-
-- Manual checks
-- Structured guides
-- Metrics capture
-
-### Phase 2 — Monitoring
-
-- Saved endpoints
+- Persistent monitors
 - Scheduled checks
-- Uptime tracking
-
-### Phase 3 — Alerts
-
-- Email alerts
-- Webhooks
+- Alerting (email / webhook)
 - Team accounts
-- Integrations
-
----
-
-## Contributing
-
-Contributions welcome.
-
-If you've worked with brittle FTP infrastructure before, your feedback is especially valuable.
 
 ---
 
