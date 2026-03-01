@@ -54,7 +54,7 @@ function jsonLd(doc: any) {
     : null;
 
   // Article + optional FAQ
-  const graph = [
+  const graph: any[] = [
     {
       "@type": "Article",
       headline: doc.title,

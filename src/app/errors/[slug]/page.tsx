@@ -41,6 +41,7 @@ export async function generateMetadata({
 
 function jsonLd(doc: any) {
   const url = `https://ftpmonitor.com/errors/${doc.slug}`;
+
   const faq = doc.body?.faqs?.length
     ? {
         "@type": "FAQPage",
@@ -52,7 +53,8 @@ function jsonLd(doc: any) {
       }
     : null;
 
-  const graph = [
+  // 👇 KEY FIX: make this an any[] so we can mix Article + FAQPage
+  const graph: any[] = [
     {
       "@type": "Article",
       headline: doc.title,
@@ -63,7 +65,9 @@ function jsonLd(doc: any) {
       publisher: { "@type": "Organization", name: "FTPMonitor" },
     },
   ];
+
   if (faq) graph.push(faq);
+
   return { "@context": "https://schema.org", "@graph": graph };
 }
 
@@ -86,28 +90,28 @@ export default async function ErrorPage({
       />
 
       <div style={{ marginTop: 18, lineHeight: 1.75, opacity: 0.92 }}>
-        {doc.body.intro?.map((p, i) => (
+        {doc.body.intro?.map((p: string, i: number) => (
           <p key={i} style={{ margin: "0 0 12px 0" }}>
             {p}
           </p>
         ))}
 
-        {doc.body.causes?.map((c, i) => (
+        {doc.body.causes?.map((c: any, i: number) => (
           <section key={i} style={{ marginTop: 18 }}>
             <h2 style={{ margin: "0 0 8px 0" }}>{c.title}</h2>
             <ul style={{ margin: 0, paddingLeft: 18 }}>
-              {c.bullets.map((b, idx) => (
+              {c.bullets.map((b: string, idx: number) => (
                 <li key={idx}>{b}</li>
               ))}
             </ul>
           </section>
         ))}
 
-        {doc.body.fixes?.map((f, i) => (
+        {doc.body.fixes?.map((f: any, i: number) => (
           <section key={i} style={{ marginTop: 18 }}>
             <h2 style={{ margin: "0 0 8px 0" }}>{f.title}</h2>
             <ol style={{ margin: 0, paddingLeft: 18 }}>
-              {f.steps.map((s, idx) => (
+              {f.steps.map((s: string, idx: number) => (
                 <li key={idx} style={{ marginBottom: 6 }}>
                   {s}
                 </li>
@@ -116,7 +120,7 @@ export default async function ErrorPage({
           </section>
         ))}
 
-        {doc.body.commands?.map((c, i) => (
+        {doc.body.commands?.map((c: any, i: number) => (
           <section key={i} style={{ marginTop: 18 }}>
             <h2 style={{ margin: "0 0 8px 0" }}>{c.title}</h2>
             <pre
