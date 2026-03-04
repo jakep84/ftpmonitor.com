@@ -1,5 +1,9 @@
 # 🚀 FTPMonitor
 
+![npm](https://img.shields.io/npm/v/ftpmonitor)
+![npm downloads](https://img.shields.io/npm/dm/ftpmonitor)
+![license](https://img.shields.io/npm/l/ftpmonitor)
+
 **Instant diagnostics for FTP, FTPS, and SFTP endpoints.**
 
 Stop guessing why file transfers fail.
