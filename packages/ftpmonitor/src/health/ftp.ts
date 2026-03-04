@@ -1,5 +1,5 @@
 import * as dns from "node:dns/promises";
-import net from "node:net";
+import * as net from "node:net";
 import { Client } from "basic-ftp";
 
 type StepKey = "dns" | "tcp" | "auth" | "list";

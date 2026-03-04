@@ -1,6 +1,6 @@
 {
   "name": "ftpmonitor",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "description": "CLI to diagnose FTP/FTPS/SFTP endpoints (DNS → TCP → Auth → List)",
   "license": "MIT",
   "homepage": "https://ftpmonitor.com",
@@ -27,7 +27,8 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build",
+    "prepack": "npm run build"
   },
   "dependencies": {
     "basic-ftp": "^5.2.0",

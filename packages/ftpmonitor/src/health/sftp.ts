@@ -1,5 +1,5 @@
 import * as dns from "node:dns/promises";
-import net from "node:net";
+import * as net from "node:net";
 import SftpClient from "ssh2-sftp-client";
 
 type StepKey = "dns" | "tcp" | "auth" | "list";

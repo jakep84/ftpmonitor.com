@@ -44,7 +44,7 @@ export function toPretty(r: Result, helpUrl?: string) {
 
   for (const s of r.steps) {
     lines.push(
-      `${padRight(s.key.toUpperCase(), 5)} ${padRight(emoji(s.ok), 2)} ${padRight(ms(s.ms), 6)} ${s.message}`,
+      `${padRight(s.key.toUpperCase(), 5)} ${padRight(emoji(s.ok), 2)} ${padRight(ms(s.ms), 8)} ${s.message}`,
     );
   }
 
@@ -72,7 +72,7 @@ export function toSlack(r: Result, helpUrl?: string) {
 
   for (const s of r.steps) {
     lines.push(
-      `${padRight(s.key.toUpperCase(), 5)} ${emoji(s.ok)} ${padRight(ms(s.ms), 6)} ${s.message}`,
+      `${padRight(s.key.toUpperCase(), 5)} ${emoji(s.ok)} ${padRight(ms(s.ms), 8)} ${s.message}`,
     );
   }
 
@@ -94,7 +94,7 @@ export function toJira(r: Result, helpUrl?: string) {
   const rows = r.steps
     .map(
       (s) =>
-        `${padRight(s.key.toUpperCase(), 5)} ${padRight(okWord(s.ok), 4)} ${padRight(ms(s.ms), 6)} ${s.message}`,
+        `${padRight(s.key.toUpperCase(), 5)} ${padRight(okWord(s.ok), 4)} ${padRight(ms(s.ms), 8)} ${s.message}`,
     )
     .join("\n");
 
@@ -112,7 +112,7 @@ export function toMarkdown(r: Result, helpUrl?: string) {
   const rows = r.steps
     .map(
       (s) =>
-        `${padRight(s.key.toUpperCase(), 5)} ${padRight(okWord(s.ok), 4)} ${padRight(ms(s.ms), 6)} ${s.message}`,
+        `${padRight(s.key.toUpperCase(), 5)} ${padRight(okWord(s.ok), 4)} ${padRight(ms(s.ms), 8)} ${s.message}`,
     )
     .join("\n");
 

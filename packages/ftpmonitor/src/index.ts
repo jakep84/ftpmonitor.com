@@ -104,6 +104,19 @@ async function runRemote(args: ReturnType<typeof parseArgs>): Promise<Result> {
 
 (async () => {
   try {
+    const raw = process.argv.slice(2);
+
+    // Help / no-args UX
+    if (
+      raw.length === 0 ||
+      raw.includes("--help") ||
+      raw.includes("-h") ||
+      raw[0] === "help"
+    ) {
+      console.log(usage());
+      process.exit(0);
+    }
+
     const args = parseArgs(process.argv);
 
     const result = args.api ? await runRemote(args) : await runLocal(args);
