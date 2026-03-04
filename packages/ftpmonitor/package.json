@@ -1,6 +1,6 @@
 {
   "name": "ftpmonitor",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "CLI to diagnose FTP/FTPS/SFTP endpoints (DNS → TCP → Auth → List)",
   "license": "MIT",
   "homepage": "https://ftpmonitor.com",
@@ -10,11 +10,15 @@
   },
   "keywords": [
     "ftp",
-    "ftps",
     "sftp",
-    "monitoring",
-    "healthcheck",
-    "cli"
+    "ftps",
+    "ftp test",
+    "ftp health check",
+    "sftp troubleshooting",
+    "devops",
+    "cli",
+    "network diagnostics",
+    "ftp debug"
   ],
   "type": "commonjs",
   "bin": {

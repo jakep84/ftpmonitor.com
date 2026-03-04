@@ -2,6 +2,7 @@
 
 ![npm](https://img.shields.io/npm/v/ftpmonitor)
 ![license](https://img.shields.io/npm/l/ftpmonitor)
+[![Socket Badge](https://socket.dev/api/badge/npm/package/ftpmonitor)](https://socket.dev/npm/package/ftpmonitor)
 
 **Instant diagnostics for FTP, FTPS, and SFTP endpoints.**
 
