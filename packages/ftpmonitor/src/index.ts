@@ -12,6 +12,7 @@ import {
 import { resolveHelpLink } from "./docs/resolveHelpLink";
 import { runFtpHealthCheck } from "./health/ftp";
 import { runSftpHealthCheck } from "./health/sftp";
+import { explainStep } from "./explainers";
 
 function defaultPort(p: "ftp" | "ftps" | "sftp") {
   return p === "sftp" ? 22 : 21;
@@ -33,7 +34,8 @@ function usage() {
     `  --format pretty|json|slack|jira|markdown   (default: pretty)\n` +
     `  --copy     Copy formatted output to clipboard\n` +
     `  --open     Open troubleshooting link in browser (if available)\n` +
-    `  --api <url> Use remote API instead of local checks (optional)\n`
+    `  --api <url> Use remote API instead of local checks (optional)\n` +
+    `  --explain  Show likely causes and suggested fixes when a step fails\n`
   );
 }
 
@@ -140,6 +142,16 @@ async function runRemote(args: ReturnType<typeof parseArgs>): Promise<Result> {
     else output = toPretty(result, helpUrl);
 
     console.log(output);
+
+    if (args.explain && failed) {
+      const explanation = explainStep(failed);
+
+      if (explanation.length) {
+        console.log("");
+        console.log("Explanation:");
+        console.log(explanation.join("\n"));
+      }
+    }
 
     if (args.copy) {
       copyToClipboard(output);

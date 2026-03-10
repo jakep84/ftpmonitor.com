@@ -1,6 +1,6 @@
 {
   "name": "ftpmonitor",
-  "version": "0.1.3",
+  "version": "0.1.5",
   "description": "CLI to diagnose FTP/FTPS/SFTP endpoints (DNS → TCP → Auth → List)",
   "license": "MIT",
   "homepage": "https://ftpmonitor.com",

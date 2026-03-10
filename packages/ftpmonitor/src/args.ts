@@ -14,6 +14,7 @@ export type CliArgs = {
   format: Format;
   copy: boolean;
   open: boolean;
+  explain: boolean;
   api?: string;
 };
 
@@ -52,6 +53,7 @@ export function parseArgs(argvRaw: string[]): CliArgs {
   const format = (getFlag(argv, "--format") ?? "pretty") as Format;
   const copy = hasFlag(argv, "--copy");
   const open = hasFlag(argv, "--open");
+  const explain = hasFlag(argv, "--explain");
   const api = getFlag(argv, "--api");
 
   if (!host) throw new Error("Missing --host example.com");
@@ -78,6 +80,7 @@ export function parseArgs(argvRaw: string[]): CliArgs {
     format,
     copy,
     open,
+    explain,
     api,
   };
 }
