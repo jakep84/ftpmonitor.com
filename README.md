@@ -1,10 +1,11 @@
 # FTPMonitor
 
 ![npm](https://img.shields.io/npm/v/ftpmonitor)
+![npm total downloads](https://img.shields.io/npm/dm/ftpmonitor)
 ![license](https://img.shields.io/npm/l/ftpmonitor)
 [![Socket Badge](https://socket.dev/api/badge/npm/package/ftpmonitor)](https://socket.dev/npm/package/ftpmonitor)
 
-**Instant diagnostics for FTP, FTPS, and SFTP endpoints.**
+**Used by developers to diagnose FTP, SFTP, and FTPS connectivity issues.**
 
 Stop guessing why file transfers fail.
 
