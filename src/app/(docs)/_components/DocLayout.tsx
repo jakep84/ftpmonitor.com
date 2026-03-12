@@ -2,6 +2,7 @@
 import Link from "next/link";
 import type { Doc } from "@/content/docs";
 import RelatedLinks from "./RelatedLinks";
+import CliCommandBlock from "./CliCommandBlock";
 
 export default function DocLayout({
   doc,
@@ -46,6 +47,8 @@ export default function DocLayout({
         <p style={{ margin: 0, opacity: 0.8, lineHeight: 1.6 }}>
           {doc.description}
         </p>
+
+        {doc.type === "guide" ? <CliCommandBlock doc={doc} /> : null}
 
         <div style={{ marginTop: 18 }}>{children}</div>
 
