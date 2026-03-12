@@ -79,6 +79,9 @@ export default function HomePage() {
   const [saveMsg, setSaveMsg] = useState("");
   const saveEmailRef = useRef<HTMLInputElement | null>(null);
 
+  // CLI example UX
+  const [copiedCli, setCopiedCli] = useState(false);
+
   // Don’t override user custom port once they touched it
   const userTouchedPort = useRef(false);
 
@@ -200,6 +203,16 @@ export default function HomePage() {
         color: text,
         padding: 16,
       } as React.CSSProperties,
+      codeBlock: {
+        margin: 0,
+        padding: 16,
+        borderRadius: 12,
+        background: "#0c0c0e",
+        border: `1px solid ${border}`,
+        overflowX: "auto",
+        fontSize: 14,
+        lineHeight: 1.6,
+      } as React.CSSProperties,
     };
   }, []);
 
@@ -263,6 +276,16 @@ export default function HomePage() {
       note: "Credentials are not included in this debug output.",
     };
     await navigator.clipboard.writeText(redact(safe));
+  }
+
+  async function copyCliCommand(command: string) {
+    try {
+      await navigator.clipboard.writeText(command);
+      setCopiedCli(true);
+      setTimeout(() => setCopiedCli(false), 1800);
+    } catch {
+      setCopiedCli(false);
+    }
   }
 
   function clearForm() {
@@ -394,6 +417,9 @@ export default function HomePage() {
       ? window.matchMedia?.("(max-width: 860px)")?.matches
       : false;
 
+  const exampleCliCommand =
+    "npx ftpmonitor check --protocol ftp --host example.com";
+
   return (
     <>
       <main
@@ -520,6 +546,112 @@ export default function HomePage() {
               <div style={{ marginTop: 12, fontSize: 13, color: styles.muted }}>
                 Tip: Fiddler won’t show FTP traffic — this tool checks the
                 connection directly.
+              </div>
+            </div>
+          </section>
+
+          {/* CLI EXAMPLE */}
+          <section
+            style={{
+              marginTop: 24,
+              padding: 18,
+              borderRadius: styles.radius,
+              background: styles.panel,
+              border: `1px solid ${styles.border}`,
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                gap: 12,
+                alignItems: "flex-start",
+                flexWrap: "wrap",
+              }}
+            >
+              <div style={{ flex: 1, minWidth: 260 }}>
+                <h2 style={{ margin: 0, letterSpacing: -0.2 }}>
+                  Diagnose FTP issues instantly
+                </h2>
+                <p
+                  style={{
+                    marginTop: 8,
+                    marginBottom: 14,
+                    color: styles.muted,
+                    lineHeight: 1.6,
+                  }}
+                >
+                  Run a quick connectivity check directly from your terminal.
+                  FTPMonitor tests DNS, TCP, authentication, and directory
+                  listing so you can see exactly where the connection fails.
+                </p>
+
+                <pre style={styles.codeBlock}>
+                  <code>{exampleCliCommand}</code>
+                </pre>
+
+                <div
+                  style={{
+                    display: "flex",
+                    gap: 10,
+                    flexWrap: "wrap",
+                    marginTop: 12,
+                    alignItems: "center",
+                  }}
+                >
+                  <button
+                    onClick={() => copyCliCommand(exampleCliCommand)}
+                    style={styles.btnPrimary(false)}
+                    title="Copy CLI example"
+                  >
+                    {copiedCli ? "Copied" : "Copy Command"}
+                  </button>
+
+                  <Link
+                    href="/guides"
+                    style={{
+                      ...styles.btnGhost(false),
+                      textDecoration: "none",
+                      display: "inline-flex",
+                      alignItems: "center",
+                    }}
+                  >
+                    Browse troubleshooting guides
+                  </Link>
+                </div>
+
+                <div
+                  style={{
+                    marginTop: 10,
+                    fontSize: 13,
+                    color: styles.muted2,
+                  }}
+                >
+                  Works with FTP, FTPS, and SFTP.
+                </div>
+              </div>
+
+              <div
+                style={{
+                  minWidth: isNarrow ? "100%" : 280,
+                  flex: isNarrow ? "1 1 100%" : "0 0 300px",
+                  border: `1px solid ${styles.border}`,
+                  borderRadius: 12,
+                  padding: 14,
+                  background: styles.panel2,
+                }}
+              >
+                <div style={{ fontWeight: 800, marginBottom: 8 }}>
+                  Example terminal output
+                </div>
+                <pre style={{ ...styles.codeBlock, padding: 14 }}>
+                  <code>{`FTPMonitor Check
+Host: example.com
+Protocol: FTP  Port: 21
+
+DNS   ✅ 8ms       DNS resolved
+TCP   ❌ 12ms      Connection refused`}</code>
+                </pre>
               </div>
             </div>
           </section>
@@ -917,7 +1049,6 @@ export default function HomePage() {
                           {s.message}
                         </div>
 
-                        {/* NEW: context-aware help link */}
                         {!s.ok &&
                           (() => {
                             const help = resolveHelpLink({
@@ -1132,7 +1263,6 @@ export default function HomePage() {
           role="dialog"
           aria-modal="true"
           onClick={(e) => {
-            // click outside closes
             if (e.target === e.currentTarget) setSaveOpen(false);
           }}
         >
