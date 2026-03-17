@@ -16,14 +16,16 @@ const geistMono = Geist_Mono({
 
 const siteName = "FTPMonitor";
 const siteUrl = "https://ftpmonitor.com";
+const defaultTitle = "Debug FTP, SFTP, and FTPS in Seconds";
 const siteDescription =
-  "Instant server-side health checks for FTP / FTPS / SFTP. Validate DNS, TCP, auth, and directory access with clear diagnostics in seconds.";
+  "Instantly test FTP, FTPS, and SFTP connections, pinpoint failures, and get exact fixes for DNS, TCP, auth, TLS, and directory listing issues.";
+const ogTitle = `${siteName} — ${defaultTitle}`;
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
 
   title: {
-    default: `${siteName} — Instant FTP / SFTP Health Checks`,
+    default: ogTitle,
     template: `%s — ${siteName}`,
   },
   description: siteDescription,
@@ -32,6 +34,27 @@ export const metadata: Metadata = {
   authors: [{ name: "FTPMonitor" }],
   creator: "FTPMonitor",
   publisher: "FTPMonitor",
+  category: "Developer Tools",
+  keywords: [
+    "ftp monitor",
+    "ftp troubleshooting",
+    "sftp troubleshooting",
+    "ftps troubleshooting",
+    "ftp health check",
+    "sftp health check",
+    "ftps health check",
+    "ftp connection test",
+    "sftp connection test",
+    "ftps connection test",
+    "ftp debug tool",
+    "sftp debug tool",
+    "ftps certificate error",
+    "ftp passive mode",
+    "sftp permission denied",
+    "ftp connection refused",
+    "devops tools",
+    "network diagnostics",
+  ],
 
   robots: {
     index: true,
@@ -53,30 +76,28 @@ export const metadata: Metadata = {
     type: "website",
     url: siteUrl,
     siteName,
-    title: `${siteName} — Instant FTP / SFTP Health Checks`,
+    title: ogTitle,
     description: siteDescription,
     images: [
       {
-        // If you add src/app/opengraph-image.tsx, Next will serve it at /opengraph-image
         url: "/opengraph-image",
         width: 1200,
         height: 630,
-        alt: `${siteName} preview`,
+        alt: "FTPMonitor — Debug FTP, SFTP, and FTPS in Seconds",
       },
     ],
   },
 
   twitter: {
     card: "summary_large_image",
-    title: `${siteName} — Instant FTP / SFTP Health Checks`,
+    title: ogTitle,
     description: siteDescription,
     images: ["/twitter-image"],
+    creator: "@ftpmonitor",
   },
 
   icons: {
-    // If you add src/app/icon.png, Next will serve it at /icon
     icon: [{ url: "/icon", type: "image/png" }],
-    // If you add src/app/apple-icon.png, Next will serve it at /apple-icon
     apple: [{ url: "/apple-icon", type: "image/png" }],
   },
 

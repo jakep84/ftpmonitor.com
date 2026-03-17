@@ -6,6 +6,7 @@ import Link from "next/link";
 import { resolveHelpLink } from "@/lib/docs/resolveHelpLink";
 
 type Protocol = "ftp" | "ftps" | "sftp";
+type SftpAuthMode = "password" | "key";
 
 type Step = {
   key: "dns" | "tcp" | "auth" | "list";
@@ -26,14 +27,11 @@ type Result = {
   tips: string[];
 };
 
-type SftpAuthMode = "password" | "key";
-
 function defaultPort(p: Protocol) {
-  if (p === "sftp") return 22;
-  return 21;
+  return p === "sftp" ? 22 : 21;
 }
 
-function redact(input: any) {
+function redact(input: unknown) {
   try {
     const s = JSON.stringify(input, (_k, v) => v, 2);
     return s.replace(
@@ -46,7 +44,6 @@ function redact(input: any) {
 }
 
 export default function HomePage() {
-  // Form state
   const [protocol, setProtocol] = useState<Protocol>("sftp");
   const [host, setHost] = useState("");
   const [port, setPort] = useState<number>(defaultPort("sftp"));
@@ -54,47 +51,38 @@ export default function HomePage() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [path, setPath] = useState("");
-
-  const [sftpAuthMode, setSftpAuthMode] = useState<SftpAuthMode>("password");
   const [privateKey, setPrivateKey] = useState("");
+  const [sftpAuthMode, setSftpAuthMode] = useState<SftpAuthMode>("password");
 
-  // UI state
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<Result | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Lead capture (Phase 2 waitlist)
+  const [copiedCli, setCopiedCli] = useState(false);
+
   const [email, setEmail] = useState("");
   const [emailStatus, setEmailStatus] = useState<"idle" | "saved" | "error">(
     "idle",
   );
-  const [emailMsg, setEmailMsg] = useState<string>("");
+  const [emailMsg, setEmailMsg] = useState("");
 
-  // Fake "saved monitor" conversion test modal
   const [saveOpen, setSaveOpen] = useState(false);
   const [saveEmail, setSaveEmail] = useState("");
   const [saveStatus, setSaveStatus] = useState<"idle" | "saved" | "error">(
     "idle",
   );
   const [saveMsg, setSaveMsg] = useState("");
-  const saveEmailRef = useRef<HTMLInputElement | null>(null);
 
-  // CLI example UX
-  const [copiedCli, setCopiedCli] = useState(false);
-
-  // Don’t override user custom port once they touched it
   const userTouchedPort = useRef(false);
-
-  // Waitlist UX refs (scroll + focus after success)
+  const hostInputRef = useRef<HTMLInputElement | null>(null);
   const waitlistRef = useRef<HTMLDivElement | null>(null);
   const emailInputRef = useRef<HTMLInputElement | null>(null);
-
-  // Health check UX refs
-  const healthFormRef = useRef<HTMLElement | null>(null);
-  const hostInputRef = useRef<HTMLInputElement | null>(null);
+  const saveEmailRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
-    if (!userTouchedPort.current) setPort(defaultPort(protocol));
+    if (!userTouchedPort.current) {
+      setPort(defaultPort(protocol));
+    }
   }, [protocol]);
 
   useEffect(() => {
@@ -119,32 +107,48 @@ export default function HomePage() {
     const bg = "#0b0b0c";
     const panel = "#111113";
     const panel2 = "#0f0f10";
-    const border = "#2a2a2e";
+    const panel3 = "#09090a";
+    const border = "rgba(255,255,255,0.10)";
+    const borderStrong = "rgba(255,255,255,0.18)";
     const text = "#f5f5f6";
     const muted = "rgba(245,245,246,0.72)";
-    const muted2 = "rgba(245,245,246,0.55)";
-    const danger = "#ff5a6a";
+    const muted2 = "rgba(245,245,246,0.56)";
     const ok = "#4ade80";
-
-    const radius = 14;
+    const danger = "#ff5a6a";
+    const radius = 18;
 
     return {
       bg,
       panel,
       panel2,
+      panel3,
       border,
+      borderStrong,
       text,
       muted,
       muted2,
-      danger,
       ok,
+      danger,
       radius,
+      shell: {
+        minHeight: "100vh",
+        background:
+          "radial-gradient(circle at top, rgba(255,255,255,0.05), transparent 30%), #0b0b0c",
+        color: text,
+        padding: "32px 16px 56px",
+        fontFamily:
+          'var(--font-geist-sans), system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif',
+      } as React.CSSProperties,
+      mono: {
+        fontFamily:
+          "var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace",
+      } as React.CSSProperties,
       input: {
         width: "100%",
-        padding: 10,
-        borderRadius: 10,
+        padding: "12px 14px",
+        borderRadius: 12,
         border: `1px solid ${border}`,
-        background: "#0c0c0e",
+        background: panel3,
         color: text,
         outline: "none",
       } as React.CSSProperties,
@@ -156,33 +160,48 @@ export default function HomePage() {
       btnPrimary: (disabled?: boolean) =>
         ({
           padding: "12px 16px",
-          borderRadius: 10,
+          borderRadius: 12,
           border: `1px solid ${disabled ? border : "#fff"}`,
-          background: disabled ? "#141416" : "#fff",
+          background: disabled ? "#161618" : "#fff",
           color: disabled ? muted2 : "#111",
           cursor: disabled ? "not-allowed" : "pointer",
-          fontWeight: 700,
+          fontWeight: 800,
         }) as React.CSSProperties,
       btnGhost: (disabled?: boolean) =>
         ({
-          padding: "12px 14px",
-          borderRadius: 10,
+          padding: "12px 16px",
+          borderRadius: 12,
           border: `1px solid ${border}`,
-          background: "#0c0c0e",
+          background: panel3,
           color: disabled ? muted2 : text,
           cursor: disabled ? "not-allowed" : "pointer",
-          fontWeight: 650,
+          fontWeight: 700,
         }) as React.CSSProperties,
-      chip: {
+      badge: {
         display: "inline-flex",
         alignItems: "center",
         gap: 8,
-        padding: "8px 10px",
+        padding: "8px 12px",
         borderRadius: 999,
         border: `1px solid ${border}`,
-        background: "#0c0c0e",
+        background: panel3,
         color: muted,
         fontSize: 12,
+      } as React.CSSProperties,
+      card: {
+        border: `1px solid ${border}`,
+        borderRadius: radius,
+        background: panel,
+      } as React.CSSProperties,
+      code: {
+        margin: 0,
+        padding: 16,
+        borderRadius: 14,
+        border: `1px solid ${border}`,
+        background: panel3,
+        overflowX: "auto",
+        fontSize: 14,
+        lineHeight: 1.65,
       } as React.CSSProperties,
       modalOverlay: {
         position: "fixed",
@@ -197,24 +216,30 @@ export default function HomePage() {
       modalCard: {
         width: "100%",
         maxWidth: 520,
-        borderRadius: 16,
-        border: `1px solid ${border}`,
-        background: "#0c0c0e",
+        borderRadius: 18,
+        border: `1px solid ${borderStrong}`,
+        background: panel3,
         color: text,
-        padding: 16,
-      } as React.CSSProperties,
-      codeBlock: {
-        margin: 0,
-        padding: 16,
-        borderRadius: 12,
-        background: "#0c0c0e",
-        border: `1px solid ${border}`,
-        overflowX: "auto",
-        fontSize: 14,
-        lineHeight: 1.6,
+        padding: 18,
       } as React.CSSProperties,
     };
   }, []);
+
+  const isClient = typeof window !== "undefined";
+  const isNarrow = isClient
+    ? window.matchMedia?.("(max-width: 920px)")?.matches
+    : false;
+
+  const canRun =
+    !!host.trim() &&
+    !!port &&
+    (protocol !== "sftp" || sftpAuthMode === "password" || !!privateKey.trim());
+
+  const exampleCliCommand =
+    "npx ftpmonitor check --protocol sftp --host example.com";
+  const heroCommand = host.trim()
+    ? `npx ftpmonitor check --protocol ${protocol} --host ${host.trim()}`
+    : exampleCliCommand;
 
   async function runCheck() {
     setLoading(true);
@@ -222,7 +247,7 @@ export default function HomePage() {
     setError(null);
 
     try {
-      const body: any = {
+      const body: Record<string, unknown> = {
         protocol,
         host: host.trim(),
         port,
@@ -231,11 +256,8 @@ export default function HomePage() {
       };
 
       if (protocol === "sftp") {
-        if (sftpAuthMode === "key") {
-          body.privateKey = privateKey;
-        } else {
-          body.password = password;
-        }
+        if (sftpAuthMode === "key") body.privateKey = privateKey;
+        else body.password = password;
       } else {
         body.password = password;
       }
@@ -246,9 +268,12 @@ export default function HomePage() {
         body: JSON.stringify(body),
       });
 
-      const json = await r.json();
+      const json = (await r.json()) as Result;
       setResult(json);
-      if (!r.ok) setError("Health check failed. See details below.");
+
+      if (!r.ok) {
+        setError("Health check failed. See details below.");
+      }
     } catch (e: any) {
       setError(e?.message ?? "Request failed");
     } finally {
@@ -390,205 +415,140 @@ export default function HomePage() {
     }
   }
 
-  const traffic = result ? (result.ok ? "🟢" : "🔴") : "⚪️";
-  const canRun =
-    !!host.trim() &&
-    !!port &&
-    (protocol !== "sftp"
-      ? true
-      : sftpAuthMode === "key"
-        ? !!privateKey.trim()
-        : true);
+  const sampleOutput = `FTPMonitor Check
+Host: example.com
+Protocol: SFTP  Port: 22  Path: .
 
-  function handleHeroRun() {
-    if (!canRun) {
-      healthFormRef.current?.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
-      setTimeout(() => hostInputRef.current?.focus(), 200);
-      return;
-    }
-    runCheck();
-  }
+DNS   ✅ 9ms      DNS resolved to 104.18.27.120
+TCP   ✅ 14ms     TCP connection succeeded
+AUTH  ✅ 83ms     Authenticated successfully
+LIST  ❌ 41ms     Permission denied
 
-  const isNarrow =
-    typeof window !== "undefined"
-      ? window.matchMedia?.("(max-width: 860px)")?.matches
-      : false;
+Tips:
+- Verify the remote path
+- Confirm the account has list/read permissions
 
-  const exampleCliCommand =
-    "npx ftpmonitor check --protocol ftp --host example.com";
+Troubleshooting: https://ftpmonitor.com/guides/sftp-directory-listing-failed`;
 
   return (
     <>
-      <main
-        style={{
-          minHeight: "100vh",
-          background: styles.bg,
-          color: styles.text,
-          padding: "32px 16px",
-          fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Arial",
-        }}
-      >
-        <div style={{ maxWidth: 980, margin: "0 auto" }}>
-          {/* HERO */}
+      <main style={styles.shell}>
+        <div style={{ maxWidth: 1120, margin: "0 auto" }}>
+          <header
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: 16,
+              flexWrap: "wrap",
+              marginBottom: 30,
+            }}
+          >
+            <Link href="/" style={{ fontWeight: 900, letterSpacing: -0.4 }}>
+              FTPMonitor
+            </Link>
+
+            <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+              <Link href="/guides" style={{ color: styles.muted }}>
+                Guides
+              </Link>
+              <Link href="/errors" style={{ color: styles.muted }}>
+                Errors
+              </Link>
+            </div>
+          </header>
+
           <section
             style={{
               display: "grid",
-              gridTemplateColumns: isNarrow ? "1fr" : "1.2fr 0.8fr",
-              gap: 24,
-              alignItems: "start",
+              gridTemplateColumns: isNarrow ? "1fr" : "1.12fr 0.88fr",
+              gap: 22,
+              alignItems: "stretch",
             }}
           >
-            <div>
+            <div
+              style={{
+                ...styles.card,
+                padding: isNarrow ? 20 : 28,
+                background:
+                  "linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01))",
+              }}
+            >
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+                <span style={styles.badge}>FTP</span>
+                <span style={styles.badge}>FTPS</span>
+                <span style={styles.badge}>SFTP</span>
+                <span style={styles.badge}>DNS → TCP → Auth → List</span>
+              </div>
+
               <h1
                 style={{
-                  fontSize: 44,
-                  lineHeight: 1.05,
-                  margin: 0,
-                  letterSpacing: -0.6,
+                  margin: "18px 0 10px",
+                  fontSize: isNarrow ? 40 : 56,
+                  lineHeight: 1.02,
+                  letterSpacing: -1.5,
                 }}
               >
-                Know Immediately When Your FTP Fails.
+                Debug FTP, SFTP, and FTPS in seconds
               </h1>
-              <p style={{ fontSize: 18, marginTop: 12, color: styles.muted }}>
-                Test your FTP / FTPS / SFTP connection instantly — then turn it
-                into continuous monitoring in one click.
+
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: 18,
+                  lineHeight: 1.6,
+                  color: styles.muted,
+                  maxWidth: 720,
+                }}
+              >
+                Instantly test your connection, pinpoint the exact failure
+                point, and get the next troubleshooting step without digging
+                through logs.
               </p>
 
               <div
                 style={{
-                  display: "flex",
-                  flexWrap: "wrap",
-                  gap: 12,
-                  marginTop: 16,
+                  marginTop: 22,
+                  padding: 16,
+                  borderRadius: 16,
+                  background: styles.panel3,
+                  border: `1px solid ${styles.borderStrong}`,
                 }}
               >
-                <button
-                  onClick={handleHeroRun}
-                  disabled={loading}
-                  style={styles.btnPrimary(loading)}
-                  title={
-                    canRun
-                      ? "Run a health check"
-                      : "Add a host (and credentials if needed) to run the check"
-                  }
-                >
-                  {loading ? "Running…" : "Run Free Health Check"}
-                </button>
-
-                <button
-                  onClick={clearForm}
-                  disabled={loading}
-                  style={styles.btnGhost(loading)}
-                  title="Clear inputs + results"
-                >
-                  Clear
-                </button>
-
-                <a
-                  href="#how"
+                <div
                   style={{
-                    alignSelf: "center",
-                    color: styles.text,
-                    opacity: 0.9,
-                    textDecoration: "none",
+                    display: "grid",
+                    gridTemplateColumns: isNarrow
+                      ? "1fr"
+                      : "minmax(0,1fr) auto",
+                    gap: 12,
+                    alignItems: "center",
                   }}
                 >
-                  See how monitoring works →
-                </a>
-              </div>
+                  <input
+                    ref={hostInputRef}
+                    value={host}
+                    onChange={(e) => setHost(e.target.value)}
+                    placeholder="example.com"
+                    style={{
+                      ...styles.input,
+                      fontSize: 16,
+                      padding: "14px 16px",
+                    }}
+                  />
 
-              <div
-                style={{
-                  display: "flex",
-                  flexWrap: "wrap",
-                  gap: 10,
-                  marginTop: 14,
-                }}
-              >
-                <span style={styles.chip}>
-                  ✓ No credentials stored (Phase 1)
-                </span>
-                <span style={styles.chip}>✓ Under 60 seconds</span>
-                <span style={styles.chip}>✓ Clear diagnostics</span>
-              </div>
-            </div>
-
-            {/* MINI PREVIEW / STATUS */}
-            <div
-              style={{
-                border: `1px solid ${styles.border}`,
-                borderRadius: styles.radius,
-                padding: 16,
-                background: styles.panel,
-              }}
-            >
-              <div
-                style={{ fontSize: 12, color: styles.muted2, marginBottom: 8 }}
-              >
-                Example Result
-              </div>
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                }}
-              >
-                <div style={{ fontWeight: 800 }}>Health Check</div>
-                <div style={{ fontSize: 22 }}>{traffic}</div>
-              </div>
-              <div style={{ fontSize: 13, color: styles.muted, marginTop: 8 }}>
-                DNS → TCP → Auth → List
-              </div>
-              <div style={{ marginTop: 12, fontSize: 13, color: styles.muted }}>
-                Tip: Fiddler won’t show FTP traffic — this tool checks the
-                connection directly.
-              </div>
-            </div>
-          </section>
-
-          {/* CLI EXAMPLE */}
-          <section
-            style={{
-              marginTop: 24,
-              padding: 18,
-              borderRadius: styles.radius,
-              background: styles.panel,
-              border: `1px solid ${styles.border}`,
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                gap: 12,
-                alignItems: "flex-start",
-                flexWrap: "wrap",
-              }}
-            >
-              <div style={{ flex: 1, minWidth: 260 }}>
-                <h2 style={{ margin: 0, letterSpacing: -0.2 }}>
-                  Diagnose FTP issues instantly
-                </h2>
-                <p
-                  style={{
-                    marginTop: 8,
-                    marginBottom: 14,
-                    color: styles.muted,
-                    lineHeight: 1.6,
-                  }}
-                >
-                  Run a quick connectivity check directly from your terminal.
-                  FTPMonitor tests DNS, TCP, authentication, and directory
-                  listing so you can see exactly where the connection fails.
-                </p>
-
-                <pre style={styles.codeBlock}>
-                  <code>{exampleCliCommand}</code>
-                </pre>
+                  <button
+                    onClick={runCheck}
+                    disabled={loading || !host.trim()}
+                    style={{
+                      ...styles.btnPrimary(loading || !host.trim()),
+                      minWidth: 140,
+                    }}
+                    title="Run a health check"
+                  >
+                    {loading ? "Testing…" : "Test Now"}
+                  </button>
+                </div>
 
                 <div
                   style={{
@@ -596,28 +556,12 @@ export default function HomePage() {
                     gap: 10,
                     flexWrap: "wrap",
                     marginTop: 12,
-                    alignItems: "center",
                   }}
                 >
-                  <button
-                    onClick={() => copyCliCommand(exampleCliCommand)}
-                    style={styles.btnPrimary(false)}
-                    title="Copy CLI example"
-                  >
-                    {copiedCli ? "Copied" : "Copy Command"}
-                  </button>
-
-                  <Link
-                    href="/guides"
-                    style={{
-                      ...styles.btnGhost(false),
-                      textDecoration: "none",
-                      display: "inline-flex",
-                      alignItems: "center",
-                    }}
-                  >
-                    Browse troubleshooting guides
-                  </Link>
+                  <span style={styles.badge}>✔ DNS</span>
+                  <span style={styles.badge}>✔ TCP</span>
+                  <span style={styles.badge}>✔ Auth</span>
+                  <span style={styles.badge}>✔ TLS / List</span>
                 </div>
 
                 <div
@@ -627,90 +571,143 @@ export default function HomePage() {
                     color: styles.muted2,
                   }}
                 >
-                  Works with FTP, FTPS, and SFTP.
+                  Full diagnosis in a few seconds. No install required for the
+                  web check.
                 </div>
               </div>
 
               <div
                 style={{
-                  minWidth: isNarrow ? "100%" : 280,
-                  flex: isNarrow ? "1 1 100%" : "0 0 300px",
-                  border: `1px solid ${styles.border}`,
-                  borderRadius: 12,
-                  padding: 14,
-                  background: styles.panel2,
+                  marginTop: 18,
+                  display: "grid",
+                  gridTemplateColumns: isNarrow ? "1fr" : "minmax(0,1fr) auto",
+                  gap: 12,
+                  alignItems: "center",
                 }}
               >
-                <div style={{ fontWeight: 800, marginBottom: 8 }}>
-                  Example terminal output
-                </div>
-                <pre style={{ ...styles.codeBlock, padding: 14 }}>
-                  <code>{`FTPMonitor Check
-Host: example.com
-Protocol: FTP  Port: 21
-
-DNS   ✅ 8ms       DNS resolved
-TCP   ❌ 12ms      Connection refused`}</code>
+                <pre style={{ ...styles.code, ...styles.mono }}>
+                  <code>{heroCommand}</code>
                 </pre>
+
+                <button
+                  onClick={() => copyCliCommand(heroCommand)}
+                  style={styles.btnGhost(false)}
+                >
+                  {copiedCli ? "Copied" : "Copy CLI"}
+                </button>
               </div>
+
+              <div
+                style={{
+                  marginTop: 14,
+                  fontSize: 13,
+                  color: styles.muted2,
+                }}
+              >
+                Used by developers debugging real production file-transfer
+                issues.
+              </div>
+            </div>
+
+            <div
+              style={{
+                ...styles.card,
+                padding: 20,
+                background: "linear-gradient(180deg, #121214, #0d0d0f)",
+              }}
+            >
+              <div
+                style={{
+                  fontSize: 12,
+                  color: styles.muted2,
+                  textTransform: "uppercase",
+                  letterSpacing: 0.4,
+                  marginBottom: 8,
+                }}
+              >
+                Example output
+              </div>
+
+              <pre style={{ ...styles.code, ...styles.mono, height: "100%" }}>
+                <code>{sampleOutput}</code>
+              </pre>
             </div>
           </section>
 
-          {/* PROBLEM */}
           <section
             style={{
-              marginTop: 34,
-              padding: 18,
-              borderRadius: styles.radius,
-              background: styles.panel2,
-              border: `1px solid ${styles.border}`,
+              marginTop: 22,
+              display: "grid",
+              gridTemplateColumns: isNarrow ? "1fr" : "repeat(3, 1fr)",
+              gap: 14,
             }}
           >
-            <h2 style={{ margin: 0, letterSpacing: -0.2 }}>
-              When FTP breaks, nobody knows… until it’s too late.
-            </h2>
-            <ul
-              style={{
-                marginTop: 10,
-                marginBottom: 0,
-                lineHeight: 1.75,
-                color: styles.muted,
-              }}
-            >
-              <li>Nightly exports silently fail</li>
-              <li>Vendor files never arrive</li>
-              <li>Automations stop running</li>
-              <li>Clients complain before you’re aware</li>
-            </ul>
+            {[
+              {
+                title: "Stop guessing",
+                body: "See whether the problem is DNS, port reachability, login, TLS, or directory access.",
+              },
+              {
+                title: "Troubleshoot faster",
+                body: "Each failed step points to the most relevant guide so you know what to fix next.",
+              },
+              {
+                title: "Share the result",
+                body: "Copy clean debug output for Slack, tickets, or incident notes without exposing credentials.",
+              },
+            ].map((item) => (
+              <div key={item.title} style={{ ...styles.card, padding: 18 }}>
+                <div style={{ fontWeight: 900, marginBottom: 8 }}>
+                  {item.title}
+                </div>
+                <div style={{ color: styles.muted, lineHeight: 1.65 }}>
+                  {item.body}
+                </div>
+              </div>
+            ))}
           </section>
 
-          {/* HEALTH CHECK FORM */}
           <section
-            ref={healthFormRef}
             style={{
               marginTop: 28,
-              border: `1px solid ${styles.border}`,
-              borderRadius: styles.radius,
-              padding: 18,
-              background: styles.panel,
+              ...styles.card,
+              padding: 20,
             }}
           >
             <div
               style={{
                 display: "flex",
                 justifyContent: "space-between",
-                gap: 12,
+                gap: 16,
                 flexWrap: "wrap",
+                alignItems: "end",
               }}
             >
               <div>
-                <h2 style={{ marginTop: 0, marginBottom: 6 }}>
-                  Test Your FTP / SFTP Now
+                <h2
+                  style={{
+                    margin: 0,
+                    letterSpacing: -0.4,
+                    fontSize: 30,
+                  }}
+                >
+                  Run a full health check
                 </h2>
-                <div style={{ color: styles.muted, fontSize: 13 }}>
-                  DNS → TCP → Auth → List • Clear answers in seconds
-                </div>
+                <p
+                  style={{
+                    margin: "8px 0 0 0",
+                    color: styles.muted,
+                    lineHeight: 1.6,
+                  }}
+                >
+                  Use the quick host box above for speed, or fill in credentials
+                  here for a complete connection test.
+                </p>
               </div>
+
+              <button onClick={clearForm} style={styles.btnGhost(false)}>
+                Clear
+              </button>
             </div>
 
             <div
@@ -718,7 +715,7 @@ TCP   ❌ 12ms      Connection refused`}</code>
                 display: "grid",
                 gridTemplateColumns: isNarrow ? "1fr" : "1fr 1fr 1fr",
                 gap: 12,
-                marginTop: 14,
+                marginTop: 18,
               }}
             >
               <label>
@@ -726,9 +723,9 @@ TCP   ❌ 12ms      Connection refused`}</code>
                 <select
                   value={protocol}
                   onChange={(e) => {
-                    setProtocol(e.target.value as Protocol);
-                    if ((e.target.value as Protocol) !== "sftp")
-                      setSftpAuthMode("password");
+                    const next = e.target.value as Protocol;
+                    setProtocol(next);
+                    if (next !== "sftp") setSftpAuthMode("password");
                   }}
                   style={styles.input}
                 >
@@ -741,7 +738,6 @@ TCP   ❌ 12ms      Connection refused`}</code>
               <label>
                 <div style={styles.label}>Host</div>
                 <input
-                  ref={hostInputRef}
                   value={host}
                   onChange={(e) => setHost(e.target.value)}
                   placeholder="example.com"
@@ -752,12 +748,12 @@ TCP   ❌ 12ms      Connection refused`}</code>
               <label>
                 <div style={styles.label}>Port</div>
                 <input
+                  type="number"
                   value={port}
                   onChange={(e) => {
                     userTouchedPort.current = true;
                     setPort(Number(e.target.value));
                   }}
-                  type="number"
                   style={styles.input}
                 />
               </label>
@@ -772,11 +768,11 @@ TCP   ❌ 12ms      Connection refused`}</code>
                 />
               </label>
 
-              {/* Auth fields */}
               {protocol === "sftp" ? (
                 <>
                   <div style={{ gridColumn: isNarrow ? "auto" : "span 2" }}>
                     <div style={styles.label}>Authentication</div>
+
                     <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                       <button
                         type="button"
@@ -791,6 +787,7 @@ TCP   ❌ 12ms      Connection refused`}</code>
                       >
                         Password
                       </button>
+
                       <button
                         type="button"
                         onClick={() => setSftpAuthMode("key")}
@@ -853,8 +850,7 @@ TCP   ❌ 12ms      Connection refused`}</code>
                           placeholder="-----BEGIN OPENSSH PRIVATE KEY-----"
                           style={{
                             ...styles.input,
-                            fontFamily:
-                              "ui-monospace, SFMono-Regular, Menlo, monospace",
+                            ...styles.mono,
                           }}
                         />
                         <div
@@ -864,7 +860,8 @@ TCP   ❌ 12ms      Connection refused`}</code>
                             color: styles.muted2,
                           }}
                         >
-                          Tip: Paste your key. We don’t store it (Phase 1).
+                          Paste the private key only for this test. It is not
+                          stored.
                         </div>
                       </div>
                     )}
@@ -875,7 +872,7 @@ TCP   ❌ 12ms      Connection refused`}</code>
                     <input
                       value={path}
                       onChange={(e) => setPath(e.target.value)}
-                      placeholder="e.g. .  or  /incoming"
+                      placeholder=". or /incoming"
                       style={styles.input}
                     />
                     <div
@@ -885,8 +882,7 @@ TCP   ❌ 12ms      Connection refused`}</code>
                         color: styles.muted2,
                       }}
                     >
-                      Examples: <code style={{ color: styles.muted }}>.</code>{" "}
-                      or <code style={{ color: styles.muted }}>/incoming</code>
+                      Example: <code>.</code> or <code>/incoming</code>
                     </div>
                   </label>
                 </>
@@ -932,7 +928,7 @@ TCP   ❌ 12ms      Connection refused`}</code>
                     <input
                       value={path}
                       onChange={(e) => setPath(e.target.value)}
-                      placeholder="e.g. /  or  /incoming"
+                      placeholder="/ or /incoming"
                       style={styles.input}
                     />
                     <div
@@ -942,8 +938,7 @@ TCP   ❌ 12ms      Connection refused`}</code>
                         color: styles.muted2,
                       }}
                     >
-                      Examples: <code style={{ color: styles.muted }}>/</code>{" "}
-                      or <code style={{ color: styles.muted }}>/incoming</code>
+                      Example: <code>/</code> or <code>/incoming</code>
                     </div>
                   </label>
                 </>
@@ -968,17 +963,17 @@ TCP   ❌ 12ms      Connection refused`}</code>
               </button>
 
               <div style={{ fontSize: 13, color: styles.muted }}>
-                We do not store credentials during testing.
+                Credentials are used only for the current request and are not
+                stored.
               </div>
             </div>
 
-            {error && (
+            {error ? (
               <div style={{ marginTop: 12, color: styles.danger }}>{error}</div>
-            )}
+            ) : null}
 
-            {/* RESULTS */}
-            {result && (
-              <div style={{ marginTop: 18 }}>
+            {result ? (
+              <div style={{ marginTop: 20 }}>
                 <div
                   style={{
                     display: "flex",
@@ -988,7 +983,7 @@ TCP   ❌ 12ms      Connection refused`}</code>
                     flexWrap: "wrap",
                   }}
                 >
-                  <h3 style={{ marginBottom: 8, marginTop: 0 }}>
+                  <h3 style={{ margin: 0 }}>
                     {result.ok ? "✅ Success" : "❌ Failed"}{" "}
                     <span style={{ fontSize: 13, color: styles.muted }}>
                       ({result.totalMs} ms)
@@ -996,117 +991,120 @@ TCP   ❌ 12ms      Connection refused`}</code>
                   </h3>
 
                   <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                    <button
-                      onClick={copyDebug}
-                      style={styles.btnGhost(false)}
-                      title="Copy safe debug output (no credentials)"
-                    >
+                    <button onClick={copyDebug} style={styles.btnGhost(false)}>
                       Copy Debug Output
                     </button>
 
-                    {result.ok && (
+                    {result.ok ? (
                       <button
                         onClick={() => {
                           setSaveEmail(email || "");
                           setSaveOpen(true);
                         }}
                         style={styles.btnPrimary(false)}
-                        title="Conversion test: save this endpoint for monitoring"
                       >
                         Save This Monitor
                       </button>
-                    )}
+                    ) : null}
                   </div>
                 </div>
 
                 <div
                   style={{
+                    marginTop: 12,
                     border: `1px solid ${styles.border}`,
-                    borderRadius: 12,
+                    borderRadius: 14,
                     padding: 12,
-                    background: "#0c0c0e",
+                    background: styles.panel3,
                   }}
                 >
-                  {result.steps.map((s, idx) => (
-                    <div
-                      key={s.key}
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        gap: 12,
-                        padding: "10px 0",
-                        borderBottom:
-                          idx === result.steps.length - 1
-                            ? "none"
-                            : `1px solid ${styles.border}`,
-                      }}
-                    >
-                      <div>
-                        <div style={{ fontWeight: 800 }}>
-                          {s.ok ? "🟢" : "🔴"} {s.key.toUpperCase()}
-                        </div>
-                        <div style={{ fontSize: 13, color: styles.muted }}>
-                          {s.message}
-                        </div>
+                  {result.steps.map((s, idx) => {
+                    const help = !s.ok
+                      ? resolveHelpLink({
+                          protocol: result.protocol,
+                          step: s.key,
+                          message: s.message,
+                        })
+                      : null;
 
-                        {!s.ok &&
-                          (() => {
-                            const help = resolveHelpLink({
-                              protocol: result.protocol,
-                              step: s.key,
-                              message: s.message,
-                            });
-
-                            return help ? (
-                              <div style={{ marginTop: 6, fontSize: 13 }}>
-                                <Link
-                                  href={help}
-                                  style={{
-                                    color: styles.text,
-                                    textDecoration: "underline",
-                                    opacity: 0.9,
-                                  }}
-                                >
-                                  Read the troubleshooting guide →
-                                </Link>
-                              </div>
-                            ) : null;
-                          })()}
-
-                        {s.details && (
-                          <div
-                            style={{
-                              marginTop: 6,
-                              fontSize: 12,
-                              color: styles.muted2,
-                              fontFamily:
-                                "ui-monospace, SFMono-Regular, Menlo, monospace",
-                            }}
-                          >
-                            {redact(s.details)}
-                          </div>
-                        )}
-                      </div>
-
+                    return (
                       <div
+                        key={`${s.key}-${idx}`}
                         style={{
-                          fontSize: 13,
-                          color: styles.muted,
-                          whiteSpace: "nowrap",
+                          display: "flex",
+                          justifyContent: "space-between",
+                          gap: 12,
+                          padding: "12px 0",
+                          borderBottom:
+                            idx === result.steps.length - 1
+                              ? "none"
+                              : `1px solid ${styles.border}`,
                         }}
                       >
-                        {typeof s.ms === "number" ? `${s.ms} ms` : ""}
+                        <div>
+                          <div style={{ fontWeight: 900 }}>
+                            {s.ok ? "🟢" : "🔴"} {s.key.toUpperCase()}
+                          </div>
+
+                          <div
+                            style={{
+                              marginTop: 4,
+                              fontSize: 14,
+                              color: styles.muted,
+                            }}
+                          >
+                            {s.message}
+                          </div>
+
+                          {help ? (
+                            <div style={{ marginTop: 8, fontSize: 13 }}>
+                              <Link
+                                href={help}
+                                style={{
+                                  color: styles.text,
+                                  textDecoration: "underline",
+                                }}
+                              >
+                                Read the troubleshooting guide →
+                              </Link>
+                            </div>
+                          ) : null}
+
+                          {s.details ? (
+                            <div
+                              style={{
+                                marginTop: 8,
+                                fontSize: 12,
+                                color: styles.muted2,
+                                ...styles.mono,
+                              }}
+                            >
+                              {redact(s.details)}
+                            </div>
+                          ) : null}
+                        </div>
+
+                        <div
+                          style={{
+                            whiteSpace: "nowrap",
+                            fontSize: 13,
+                            color: styles.muted,
+                          }}
+                        >
+                          {typeof s.ms === "number" ? `${s.ms} ms` : ""}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
 
                 {result.tips?.length ? (
-                  <div style={{ marginTop: 12 }}>
-                    <div style={{ fontWeight: 800 }}>Troubleshooting tips</div>
+                  <div style={{ marginTop: 14 }}>
+                    <div style={{ fontWeight: 900 }}>Troubleshooting tips</div>
                     <ul
                       style={{
                         marginTop: 8,
+                        paddingLeft: 18,
                         lineHeight: 1.7,
                         color: styles.muted,
                       }}
@@ -1118,13 +1116,12 @@ TCP   ❌ 12ms      Connection refused`}</code>
                   </div>
                 ) : null}
 
-                {/* Phase 2 waitlist CTA */}
                 <div
                   ref={waitlistRef}
                   style={{
-                    marginTop: 14,
-                    padding: 14,
-                    borderRadius: 12,
+                    marginTop: 16,
+                    padding: 16,
+                    borderRadius: 14,
                     border: `1px solid ${styles.border}`,
                     background: styles.panel2,
                   }}
@@ -1132,19 +1129,25 @@ TCP   ❌ 12ms      Connection refused`}</code>
                   <div style={{ fontWeight: 900, letterSpacing: -0.2 }}>
                     Get early access to continuous monitoring
                   </div>
+
                   <div
-                    style={{ fontSize: 13, color: styles.muted, marginTop: 6 }}
+                    style={{
+                      fontSize: 13,
+                      color: styles.muted,
+                      marginTop: 6,
+                      lineHeight: 1.6,
+                    }}
                   >
-                    Save monitors, run scheduled checks, and get alerts when
-                    something breaks. No spam — 1–2 emails max until launch.
+                    Save endpoints, run scheduled checks, and get alerts when
+                    something breaks.
                   </div>
 
                   <div
                     style={{
                       display: "flex",
                       gap: 10,
-                      marginTop: 10,
                       flexWrap: "wrap",
+                      marginTop: 10,
                     }}
                   >
                     <input
@@ -1180,84 +1183,126 @@ TCP   ❌ 12ms      Connection refused`}</code>
                   ) : null}
                 </div>
               </div>
-            )}
+            ) : null}
           </section>
 
-          {/* HOW IT WORKS */}
-          <section id="how" style={{ marginTop: 32 }}>
-            <h2 style={{ marginBottom: 10 }}>How it works</h2>
+          <section
+            style={{
+              marginTop: 28,
+              display: "grid",
+              gridTemplateColumns: isNarrow ? "1fr" : "repeat(3, 1fr)",
+              gap: 14,
+            }}
+          >
+            {[
+              {
+                title: "1) Test",
+                body: "Run a fast check against DNS, TCP, authentication, and directory listing.",
+              },
+              {
+                title: "2) Diagnose",
+                body: "See the exact step that failed and jump straight into the matching guide.",
+              },
+              {
+                title: "3) Monitor",
+                body: "Join the waitlist for scheduled checks and alerting as monitoring launches.",
+              },
+            ].map((item) => (
+              <div key={item.title} style={{ ...styles.card, padding: 18 }}>
+                <div style={{ fontWeight: 900 }}>{item.title}</div>
+                <div
+                  style={{
+                    marginTop: 8,
+                    color: styles.muted,
+                    lineHeight: 1.65,
+                  }}
+                >
+                  {item.body}
+                </div>
+              </div>
+            ))}
+          </section>
+
+          <section
+            style={{
+              marginTop: 28,
+              ...styles.card,
+              padding: 20,
+            }}
+          >
+            <h2 style={{ margin: 0, fontSize: 28, letterSpacing: -0.4 }}>
+              Common issues
+            </h2>
+            <p
+              style={{
+                margin: "8px 0 0 0",
+                color: styles.muted,
+                lineHeight: 1.6,
+              }}
+            >
+              Your guides are already covering strong intent queries. Make the
+              homepage bridge directly into them.
+            </p>
+
             <div
               style={{
+                marginTop: 14,
                 display: "grid",
-                gridTemplateColumns: isNarrow ? "1fr" : "repeat(3, 1fr)",
+                gridTemplateColumns: isNarrow ? "1fr" : "1fr 1fr",
                 gap: 12,
               }}
             >
-              <div
-                style={{
-                  border: `1px solid ${styles.border}`,
-                  borderRadius: styles.radius,
-                  padding: 14,
-                  background: styles.panel,
-                }}
-              >
-                <div style={{ fontWeight: 900 }}>1) Test</div>
-                <div
-                  style={{ marginTop: 6, fontSize: 14, color: styles.muted }}
+              {[
+                ["/guides/ftp-connection-refused", "FTP connection refused"],
+                ["/guides/sftp-permission-denied", "SFTP permission denied"],
+                [
+                  "/guides/ftp-passive-mode-not-working",
+                  "FTP passive mode not working",
+                ],
+                ["/guides/ftps-certificate-error", "FTPS certificate error"],
+              ].map(([href, label]) => (
+                <Link
+                  key={href}
+                  href={href}
+                  style={{
+                    padding: 14,
+                    borderRadius: 14,
+                    border: `1px solid ${styles.border}`,
+                    background: styles.panel3,
+                    display: "block",
+                  }}
                 >
-                  Run a health check (DNS → TCP → Auth → List).
-                </div>
-              </div>
-              <div
-                style={{
-                  border: `1px solid ${styles.border}`,
-                  borderRadius: styles.radius,
-                  padding: 14,
-                  background: styles.panel,
-                }}
-              >
-                <div style={{ fontWeight: 900 }}>2) Monitor</div>
-                <div
-                  style={{ marginTop: 6, fontSize: 14, color: styles.muted }}
-                >
-                  Save it and run scheduled checks (Phase 2).
-                </div>
-              </div>
-              <div
-                style={{
-                  border: `1px solid ${styles.border}`,
-                  borderRadius: styles.radius,
-                  padding: 14,
-                  background: styles.panel,
-                }}
-              >
-                <div style={{ fontWeight: 900 }}>3) Alert</div>
-                <div
-                  style={{ marginTop: 6, fontSize: 14, color: styles.muted }}
-                >
-                  Get notified when something breaks (Phase 3).
-                </div>
-              </div>
+                  <div style={{ fontWeight: 800 }}>{label}</div>
+                  <div
+                    style={{
+                      marginTop: 6,
+                      fontSize: 13,
+                      color: styles.muted2,
+                    }}
+                  >
+                    Read guide →
+                  </div>
+                </Link>
+              ))}
             </div>
           </section>
 
           <footer
             style={{
-              marginTop: 42,
+              marginTop: 38,
               paddingTop: 18,
               borderTop: `1px solid ${styles.border}`,
               fontSize: 13,
               color: styles.muted2,
             }}
           >
-            © {new Date().getFullYear()} FTPMonitor.com — Simple FTP & SFTP
-            monitoring.
+            © {new Date().getFullYear()} FTPMonitor.com — diagnose FTP, FTPS,
+            and SFTP issues faster.
           </footer>
         </div>
       </main>
 
-      {/* Save Monitor Modal */}
-      {saveOpen && (
+      {saveOpen ? (
         <div
           style={styles.modalOverlay}
           role="dialog"
@@ -1272,6 +1317,7 @@ TCP   ❌ 12ms      Connection refused`}</code>
                 display: "flex",
                 justifyContent: "space-between",
                 gap: 12,
+                alignItems: "start",
               }}
             >
               <div>
@@ -1283,8 +1329,8 @@ TCP   ❌ 12ms      Connection refused`}</code>
                 <div
                   style={{ marginTop: 6, color: styles.muted, fontSize: 13 }}
                 >
-                  Monitoring launches soon — enter your email to activate this
-                  endpoint.
+                  Monitoring launches soon. Enter your email to save this
+                  endpoint for launch access.
                 </div>
               </div>
 
@@ -1347,6 +1393,7 @@ TCP   ❌ 12ms      Connection refused`}</code>
               >
                 Activate Monitoring
               </button>
+
               <button
                 onClick={() => setSaveOpen(false)}
                 style={styles.btnGhost(false)}
@@ -1368,7 +1415,7 @@ TCP   ❌ 12ms      Connection refused`}</code>
             ) : null}
           </div>
         </div>
-      )}
+      ) : null}
     </>
   );
 }
